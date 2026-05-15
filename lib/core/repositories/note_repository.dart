@@ -86,6 +86,15 @@ class NoteRepository {
 
   Future<String> insertNote(NotesCompanion note) => _notesDao.insertNote(note);
 
+  Future<String> saveNoteWithPeople(
+    NotesCompanion note,
+    List<String> personIds,
+  ) async {
+    final noteId = await insertNote(note);
+    await _notePeopleDao.setNotePeople(noteId, personIds);
+    return noteId;
+  }
+
   Future<bool> updateNote(NotesCompanion note) => _notesDao.updateNote(note);
 
   Future<int> deleteNote(String id) => _notesDao.deleteNote(id);
