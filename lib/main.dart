@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/router/app_router.dart';
+
 void main() {
   runApp(const ProviderScope(child: VoiceonApp()));
 }
@@ -10,7 +12,7 @@ class VoiceonApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Voiceon',
       theme: ThemeData(
         useMaterial3: true,
@@ -26,14 +28,7 @@ class VoiceonApp extends StatelessWidget {
         brightness: Brightness.dark,
       ),
       themeMode: ThemeMode.system,
-      home: const Scaffold(
-        body: Center(
-          child: Text(
-            'Voiceon placeholder home',
-            style: TextStyle(fontSize: 18),
-          ),
-        ),
-      ),
+      routerConfig: appRouter,
     );
   }
 }
