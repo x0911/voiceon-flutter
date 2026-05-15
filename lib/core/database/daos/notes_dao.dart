@@ -124,6 +124,12 @@ ORDER BY
     return update(notes).replace(entry);
   }
 
+  Future<bool> toggleNoteCompletion(String id, bool isCompleted) async {
+    final updatedRows = await (update(notes)..where((tbl) => tbl.id.equals(id)))
+        .write(NotesCompanion(isCompleted: Value(isCompleted)));
+    return updatedRows > 0;
+  }
+
   Future<int> deleteNote(String id) {
     return (delete(notes)..where((tbl) => tbl.id.equals(id))).go();
   }
