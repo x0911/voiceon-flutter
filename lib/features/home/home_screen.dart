@@ -7,6 +7,7 @@ import '../../core/database/app_database.dart';
 import '../../core/models/note.dart';
 import '../../core/repositories/note_repository.dart';
 import '../../core/services/audio_service.dart';
+import '../../core/theme/theme_provider.dart';
 import 'home_state.dart';
 import 'note_card.dart';
 
@@ -68,6 +69,9 @@ class HomeScreen extends ConsumerWidget {
       }
     }
 
+    final themeMode = ref.watch(themeModeProvider);
+    final themeNotifier = ref.read(themeModeProvider.notifier);
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -75,9 +79,39 @@ class HomeScreen extends ConsumerWidget {
             pinned: true,
             floating: false,
             snap: false,
-            title: const Text('Voiceon'),
-            centerTitle: true,
+            expandedHeight: 100,
+            flexibleSpace: FlexibleSpaceBar(
+              title: Text(
+                'Voiceon',
+                style: Theme.of(context).textTheme.displaySmall,
+              ),
+              centerTitle: true,
+            ),
             actions: [
+              IconButton(
+                icon: Icon(
+                  themeMode == ThemeMode.dark
+                      ? Icons.dark_mode
+                      : themeMode == ThemeMode.light
+                      ? Icons.light_mode
+                      : Icons.brightness_auto,
+                ),
+                tooltip: themeMode == ThemeMode.dark
+                    ? 'Switch to light theme'
+                    : themeMode == ThemeMode.light
+                    ? 'Switch to system theme'
+                    : 'Switch to dark theme',
+                onPressed: themeNotifier.cycleThemeMode,
+              ),
+              IconButton(
+                icon: const Icon(Icons.settings_outlined),
+                tooltip: 'Settings',
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Settings coming soon.')),
+                  );
+                },
+              ),
               if (filters.hasFilters)
                 IconButton(
                   icon: const Icon(Icons.filter_alt_off),
