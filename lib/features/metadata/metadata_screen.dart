@@ -212,12 +212,20 @@ class _MetadataScreenState extends ConsumerState<MetadataScreen> {
   Widget _buildLabelField() {
     return TextFormField(
       controller: _labelController,
+      maxLength: 100,
       decoration: const InputDecoration(
         labelText: 'Label',
         hintText: 'Give it a name...',
         border: OutlineInputBorder(),
       ),
       textInputAction: TextInputAction.next,
+      validator: (value) {
+        final trimmed = value?.trim() ?? '';
+        if (trimmed.length > 100) {
+          return 'Label must be 100 characters or less.';
+        }
+        return null;
+      },
     );
   }
 

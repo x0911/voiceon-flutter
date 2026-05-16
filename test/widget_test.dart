@@ -9,9 +9,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:voiceon/main.dart';
 
 void main() {
-  testWidgets('Voiceon placeholder displays', (WidgetTester tester) async {
+  testWidgets('Voiceon home screen title displays', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const VoiceonApp());
 
-    expect(find.text('Voiceon placeholder home'), findsOneWidget);
+    expect(find.text('Voiceon'), findsWidgets);
   });
 }

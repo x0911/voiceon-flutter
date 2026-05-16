@@ -31,6 +31,8 @@ LazyDatabase _openConnection() {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  AppDatabase.test(QueryExecutor executor) : super(executor);
+
   @override
   int get schemaVersion => 1;
 }
