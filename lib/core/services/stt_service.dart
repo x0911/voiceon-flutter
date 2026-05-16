@@ -1,6 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
@@ -94,10 +98,66 @@ class SttService {
     }
   }
 
-  Future<String> transcribeFile(String path) async {
-    // The current speech_to_text package does not support direct audio-file transcription.
-    // This method is a placeholder for future integration with a file-based STT service.
-    return '';
+  Future<String> transcribeFile(
+    String path, {
+    Future<void> Function(String path)? playAudio,
+  }) async {
+    if (!await initialize()) {
+      debugPrint('SttService.transcribeFile: failed to initialize STT.');
+      return '';
+    }
+
+    final resolvedPath = await _resolveAudioFilePath(path);
+    final file = File(resolvedPath);
+    if (!await file.exists()) {
+      debugPrint(
+        'SttService.transcribeFile: audio file not found at $resolvedPath',
+      );
+      return '';
+    }
+
+    debugPrint('SttService.transcribeFile: transcribing $resolvedPath');
+    _lastRecognizedText = '';
+
+    final locale = await getDefaultLocaleId();
+    await _speech.listen(
+      onResult: _onResult,
+      localeId: locale,
+      listenFor: const Duration(minutes: 1),
+      pauseFor: const Duration(seconds: 3),
+      listenOptions: SpeechListenOptions(
+        partialResults: true,
+        cancelOnError: true,
+        listenMode: ListenMode.dictation,
+      ),
+      onSoundLevelChange: _onSoundLevelChange,
+    );
+
+    if (playAudio != null) {
+      try {
+        await playAudio(resolvedPath);
+      } catch (error) {
+        debugPrint('SttService.transcribeFile: audio playback failed: $error');
+      }
+    } else {
+      await Future.delayed(const Duration(seconds: 5));
+    }
+
+    await stopRealtimeTranscription();
+
+    debugPrint(
+      'SttService.transcribeFile: result=${_lastRecognizedText.length} chars',
+    );
+    return _lastRecognizedText;
+  }
+
+  Future<String> _resolveAudioFilePath(String path) async {
+    if (p.isAbsolute(path)) {
+      return path;
+    }
+
+    final documents = await getApplicationDocumentsDirectory();
+    return p.join(documents.path, path);
   }
 
   void _onResult(SpeechRecognitionResult result) {

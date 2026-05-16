@@ -89,4 +89,4 @@ crashlytics-build.properties
 # pubspec.lock
 
 # Security
-development-plan.md
+/development-plan

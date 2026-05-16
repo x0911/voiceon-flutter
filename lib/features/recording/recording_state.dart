@@ -87,14 +87,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
   Future<void> startRecording() async {
     try {
       final result = await _audioService.startRecording();
-      await _sttService.startRealtimeTranscription();
-
       _transcriptionSubscription?.cancel();
-      _transcriptionSubscription = _sttService.transcriptionStream.listen((
-        text,
-      ) {
-        state = state.copyWith(liveTranscript: text);
-      });
 
       _startTicker();
       state = state.copyWith(
@@ -121,7 +114,6 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
   Future<void> resumeRecording() async {
     if (!state.isPaused) return;
     await _audioService.resumeRecording();
-    await _sttService.startRealtimeTranscription();
     _startTicker();
     state = state.copyWith(status: RecordingStatus.recording);
   }
@@ -133,17 +125,31 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
 
     _ticker?.cancel();
     final result = await _audioService.stopRecording();
-    await _sttService.stopRealtimeTranscription();
     _transcriptionSubscription?.cancel();
+
+    String transcript = '';
+    try {
+      transcript = await _sttService.transcribeFile(
+        result.path,
+        playAudio: _audioService.playAudio,
+      );
+    } catch (_) {
+      transcript = '';
+    }
 
     state = state.copyWith(
       status: RecordingStatus.stopped,
       elapsed: Duration(seconds: result.durationSeconds),
       durationSeconds: result.durationSeconds,
       audioPath: result.path,
+      liveTranscript: transcript,
     );
 
-    return result;
+    return RecordingResult(
+      path: result.path,
+      durationSeconds: result.durationSeconds,
+      transcript: transcript,
+    );
   }
 
   Future<void> cancelRecording() async {

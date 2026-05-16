@@ -8,7 +8,6 @@ import '../../core/models/note.dart';
 import '../../core/models/person.dart';
 import '../../core/repositories/note_repository.dart';
 import '../../core/services/audio_service.dart';
-import '../../core/theme/theme_provider.dart';
 import 'home_state.dart';
 import 'note_card.dart';
 
@@ -97,9 +96,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     }
 
-    final themeMode = ref.watch(themeModeProvider);
-    final themeNotifier = ref.read(themeModeProvider.notifier);
-
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -117,28 +113,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             actions: [
               IconButton(
-                icon: Icon(
-                  themeMode == ThemeMode.dark
-                      ? Icons.dark_mode
-                      : themeMode == ThemeMode.light
-                      ? Icons.light_mode
-                      : Icons.brightness_auto,
-                ),
-                tooltip: themeMode == ThemeMode.dark
-                    ? 'Switch to light theme'
-                    : themeMode == ThemeMode.light
-                    ? 'Switch to system theme'
-                    : 'Switch to dark theme',
-                onPressed: themeNotifier.cycleThemeMode,
-              ),
-              IconButton(
                 icon: const Icon(Icons.settings_outlined),
                 tooltip: 'Settings',
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Settings coming soon.')),
-                  );
-                },
+                onPressed: () => context.push('/settings'),
               ),
               if (filters.hasFilters)
                 IconButton(
@@ -169,6 +146,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       return FilterChip(
                         label: Text(priority.name.toUpperCase()),
                         selected: filters.priorities.contains(priority),
+                        selectedColor: Theme.of(context).colorScheme.primary,
+                        checkmarkColor: Colors.white,
+                        labelStyle: TextStyle(
+                          color: filters.priorities.contains(priority)
+                              ? Colors.white
+                              : Theme.of(context).colorScheme.onSurface,
+                          fontWeight: filters.priorities.contains(priority)
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                        ),
+                        selectedShadowColor: Colors.transparent,
                         onSelected: (_) =>
                             filterNotifier.togglePriority(priority),
                       );
@@ -181,6 +169,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ChoiceChip(
                         label: const Text('Todo'),
                         selected: filters.todoFilter == HomeTodoFilter.todo,
+                        selectedColor: Theme.of(context).colorScheme.primary,
+                        labelStyle: TextStyle(
+                          color: filters.todoFilter == HomeTodoFilter.todo
+                              ? Colors.white
+                              : Theme.of(context).colorScheme.onSurface,
+                        ),
+                        selectedShadowColor: Colors.transparent,
                         onSelected: (_) => filterNotifier.setTodoFilter(
                           filters.todoFilter == HomeTodoFilter.todo
                               ? HomeTodoFilter.all
@@ -190,6 +185,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ChoiceChip(
                         label: const Text('Non-Todo'),
                         selected: filters.todoFilter == HomeTodoFilter.nonTodo,
+                        selectedColor: Theme.of(context).colorScheme.primary,
+                        labelStyle: TextStyle(
+                          color: filters.todoFilter == HomeTodoFilter.nonTodo
+                              ? Colors.white
+                              : Theme.of(context).colorScheme.onSurface,
+                        ),
+                        selectedShadowColor: Colors.transparent,
                         onSelected: (_) => filterNotifier.setTodoFilter(
                           filters.todoFilter == HomeTodoFilter.nonTodo
                               ? HomeTodoFilter.all
@@ -206,6 +208,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         label: const Text('Pending'),
                         selected:
                             filters.statusFilter == HomeStatusFilter.pending,
+                        selectedColor: Theme.of(context).colorScheme.primary,
+                        labelStyle: TextStyle(
+                          color:
+                              filters.statusFilter == HomeStatusFilter.pending
+                              ? Colors.white
+                              : Theme.of(context).colorScheme.onSurface,
+                        ),
+                        selectedShadowColor: Colors.transparent,
                         onSelected: (_) => filterNotifier.setStatusFilter(
                           filters.statusFilter == HomeStatusFilter.pending
                               ? HomeStatusFilter.all
@@ -216,6 +226,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         label: const Text('Completed'),
                         selected:
                             filters.statusFilter == HomeStatusFilter.completed,
+                        selectedColor: Theme.of(context).colorScheme.primary,
+                        labelStyle: TextStyle(
+                          color:
+                              filters.statusFilter == HomeStatusFilter.completed
+                              ? Colors.white
+                              : Theme.of(context).colorScheme.onSurface,
+                        ),
+                        selectedShadowColor: Colors.transparent,
                         onSelected: (_) => filterNotifier.setStatusFilter(
                           filters.statusFilter == HomeStatusFilter.completed
                               ? HomeStatusFilter.all
@@ -239,6 +257,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           return FilterChip(
                             label: Text(person.name),
                             selected: selected,
+                            selectedColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            checkmarkColor: Colors.white,
+                            labelStyle: TextStyle(
+                              color: selected
+                                  ? Colors.white
+                                  : Theme.of(context).colorScheme.onSurface,
+                            ),
+                            selectedShadowColor: Colors.transparent,
                             onSelected: (_) =>
                                 filterNotifier.togglePersonFilter(person.id),
                           );
@@ -326,7 +354,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               value,
                             )
                           : null,
-                      onTap: () => context.go('/note/${note.id}'),
+                      onTap: () => context.push('/note/${note.id}'),
                     ),
                   );
                 }, childCount: notes.length),
@@ -347,7 +375,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.mic),
         label: const Text('New note'),
-        onPressed: () => context.go('/record'),
+        onPressed: () => context.push('/record'),
       ),
     );
   }

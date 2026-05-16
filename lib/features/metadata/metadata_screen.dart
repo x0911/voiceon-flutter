@@ -62,6 +62,9 @@ class _MetadataScreenState extends ConsumerState<MetadataScreen> {
     super.initState();
     if (widget.editingNoteId != null) {
       _loadExistingNote();
+    } else if (widget.recordingResult.transcript.isNotEmpty) {
+      _contentController.text = widget.recordingResult.transcript;
+      _showContentEditor = true;
     }
   }
 
@@ -235,9 +238,12 @@ class _MetadataScreenState extends ConsumerState<MetadataScreen> {
       decoration: const InputDecoration(
         labelText: 'Description',
         hintText: 'Add context...',
+        alignLabelWithHint: true,
         border: OutlineInputBorder(),
       ),
+      minLines: 3,
       maxLines: 4,
+      textAlignVertical: TextAlignVertical.top,
       textInputAction: TextInputAction.newline,
     );
   }
@@ -405,9 +411,12 @@ class _MetadataScreenState extends ConsumerState<MetadataScreen> {
       decoration: const InputDecoration(
         labelText: 'Content',
         hintText: 'Edit transcript here...',
+        alignLabelWithHint: true,
         border: OutlineInputBorder(),
       ),
+      minLines: 4,
       maxLines: 6,
+      textAlignVertical: TextAlignVertical.top,
       textInputAction: TextInputAction.newline,
     );
   }

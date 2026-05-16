@@ -154,7 +154,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       if (!mounted) return;
       if (widget.extra is RecordingEditContext) {
         final editContext = widget.extra as RecordingEditContext;
-        context.go(
+        context.push(
           '/metadata',
           extra: RecordingEditContext(
             noteId: editContext.noteId,
@@ -163,7 +163,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
         );
         return;
       }
-      context.go('/metadata', extra: result);
+      context.push('/metadata', extra: result);
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -186,9 +186,15 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
             await notifier.cancelRecording();
             if (!context.mounted) return;
             if (widget.extra is RecordingEditContext) {
-              context.go(
-                '/note/${(widget.extra as RecordingEditContext).noteId}',
-              );
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go(
+                  '/note/${(widget.extra as RecordingEditContext).noteId}',
+                );
+              }
+            } else if (context.canPop()) {
+              context.pop();
             } else {
               context.go('/');
             }

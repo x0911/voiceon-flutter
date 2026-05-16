@@ -17,8 +17,13 @@ final audioServiceProvider = Provider<AudioService>((ref) {
 class RecordingResult {
   final String path;
   final int durationSeconds;
+  final String transcript;
 
-  RecordingResult({required this.path, required this.durationSeconds});
+  RecordingResult({
+    required this.path,
+    required this.durationSeconds,
+    this.transcript = '',
+  });
 }
 
 class AudioService {
@@ -149,22 +154,30 @@ class AudioService {
   }
 
   Future<void> playAudio(String path) async {
-    if (!File(path).existsSync()) {
+    final file = File(path);
+    if (!await file.exists()) {
       throw StateError('Audio file not found at path: $path');
     }
 
     await _initPlayer();
+    final playbackComplete = Completer<void>();
+
     await _player.startPlayer(
       fromURI: path,
       codec: Codec.aacMP4,
       whenFinished: () {
         _playbackPositionController.add(Duration.zero);
+        if (!playbackComplete.isCompleted) {
+          playbackComplete.complete();
+        }
       },
     );
 
     _player.onProgress?.listen((event) {
       _playbackPositionController.add(event.position);
     });
+
+    await playbackComplete.future;
   }
 
   Future<void> pauseAudio() async {

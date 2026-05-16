@@ -11,6 +11,10 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
       ThemeMode.light => ThemeMode.system,
     };
   }
+
+  void setThemeMode(ThemeMode mode) {
+    state = mode;
+  }
 }
 
 final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>(

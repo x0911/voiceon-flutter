@@ -5,6 +5,7 @@ import '../../features/home/home_screen.dart';
 import '../../features/metadata/metadata_screen.dart';
 import '../../features/note_detail/note_detail_screen.dart';
 import '../../features/recording/recording_screen.dart';
+import '../../features/settings/settings_screen.dart';
 import '../../core/services/audio_service.dart';
 
 final appRouter = GoRouter(
@@ -52,6 +53,11 @@ final appRouter = GoRouter(
         }
         return NoteDetailScreen(noteId: id);
       },
+    ),
+    GoRoute(
+      path: '/settings',
+      name: 'settings',
+      builder: (context, state) => const SettingsScreen(),
     ),
   ],
 );

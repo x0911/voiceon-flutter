@@ -490,9 +490,12 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
                   _isEditing
                       ? TextFormField(
                           controller: _contentController,
+                          minLines: 4,
                           maxLines: 6,
+                          textAlignVertical: TextAlignVertical.top,
                           decoration: const InputDecoration(
                             labelText: 'Transcript',
+                            alignLabelWithHint: true,
                             border: OutlineInputBorder(),
                           ),
                         )
@@ -594,9 +597,12 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
       decoration: const InputDecoration(
         labelText: 'Description',
         hintText: 'Add context...',
+        alignLabelWithHint: true,
         border: OutlineInputBorder(),
       ),
+      minLines: 3,
       maxLines: 4,
+      textAlignVertical: TextAlignVertical.top,
       textInputAction: TextInputAction.newline,
     );
   }
@@ -871,7 +877,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
 
     if (shouldReplace != true || !mounted) return;
 
-    context.go(
+    context.push(
       '/record',
       extra: RecordingEditContext(
         noteId: note.id,
