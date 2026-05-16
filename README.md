@@ -1,3 +1,3 @@
 # voiceon
 
-Voice-first note-taking app for Android.
+Voice-first note-taking app for Android and IOS.
