@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -26,6 +27,14 @@ class SttService {
   Future<bool> initialize() async {
     if (_initialized) {
       return true;
+    }
+
+    final permission = await Permission.microphone.status;
+    if (!permission.isGranted) {
+      final requestResult = await Permission.microphone.request();
+      if (!requestResult.isGranted) {
+        return false;
+      }
     }
 
     _initialized = await _speech.initialize(

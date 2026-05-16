@@ -1,17 +1,179 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../metadata/metadata_screen.dart';
 import 'recording_state.dart';
 
-class RecordingScreen extends ConsumerWidget {
+class RecordingScreen extends ConsumerStatefulWidget {
   final Object? extra;
 
   const RecordingScreen({super.key, this.extra});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RecordingScreen> createState() => _RecordingScreenState();
+}
+
+class _RecordingScreenState extends ConsumerState<RecordingScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final recordingState = ref.read(recordingStateProvider);
+    final notifier = ref.read(recordingStateProvider.notifier);
+
+    if (state == AppLifecycleState.paused && recordingState.isRecording) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Recording will continue in the background.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (state == AppLifecycleState.inactive && recordingState.isRecording) {
+      notifier.pauseRecording();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Recording paused due to an interruption.'),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<bool> _ensureMicrophonePermission() async {
+    final status = await Permission.microphone.status;
+    if (status.isGranted) {
+      return true;
+    }
+
+    final requested = await Permission.microphone.request();
+    if (requested.isGranted) {
+      return true;
+    }
+
+    if (requested.isPermanentlyDenied) {
+      await _showPermissionPermanentlyDeniedDialog();
+      return false;
+    }
+
+    await _showPermissionRationaleDialog();
+    return false;
+  }
+
+  Future<void> _showPermissionRationaleDialog() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Microphone permission required'),
+          content: const Text(
+            'Voiceon needs microphone access to record audio and transcribe your note.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Dismiss'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showPermissionPermanentlyDeniedDialog() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Microphone permission blocked'),
+          content: const Text(
+            'Microphone access is blocked. Open app settings and grant permission to continue recording.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                openAppSettings();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Open settings'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _handleMainAction(
+    RecordingState state,
+    RecordingNotifier notifier,
+  ) async {
+    if (state.isRecording) {
+      await notifier.pauseRecording();
+      return;
+    }
+
+    if (state.isPaused) {
+      await notifier.resumeRecording();
+      return;
+    }
+
+    final granted = await _ensureMicrophonePermission();
+    if (!granted) {
+      return;
+    }
+
+    await notifier.startRecording();
+  }
+
+  Future<void> _stopRecording(RecordingNotifier notifier) async {
+    try {
+      final result = await notifier.stopRecording();
+      if (!mounted) return;
+      if (widget.extra is RecordingEditContext) {
+        final editContext = widget.extra as RecordingEditContext;
+        context.go(
+          '/metadata',
+          extra: RecordingEditContext(
+            noteId: editContext.noteId,
+            recordingResult: result,
+          ),
+        );
+        return;
+      }
+      context.go('/metadata', extra: result);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(recordingStateProvider);
     final notifier = ref.read(recordingStateProvider.notifier);
 
@@ -23,8 +185,10 @@ class RecordingScreen extends ConsumerWidget {
           onPressed: () async {
             await notifier.cancelRecording();
             if (!context.mounted) return;
-            if (extra is RecordingEditContext) {
-              context.go('/note/${(extra as RecordingEditContext).noteId}');
+            if (widget.extra is RecordingEditContext) {
+              context.go(
+                '/note/${(widget.extra as RecordingEditContext).noteId}',
+              );
             } else {
               context.go('/');
             }
@@ -49,6 +213,28 @@ class RecordingScreen extends ConsumerWidget {
           children: [
             const SizedBox(height: 16),
             _buildWaveform(context, state),
+            if (state.isRecording) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withAlpha(30),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  'Recording will continue if the app goes to the background.',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
             _buildTimer(context, state),
             const SizedBox(height: 20),
@@ -174,35 +360,14 @@ class RecordingScreen extends ConsumerWidget {
       children: [
         FilledButton(
           onPressed: () async {
-            if (state.isRecording) {
-              await notifier.pauseRecording();
-            } else if (state.isPaused) {
-              await notifier.resumeRecording();
-            } else {
-              await notifier.startRecording();
-            }
+            await _handleMainAction(state, notifier);
           },
           child: Text(mainButtonLabel),
         ),
         const SizedBox(height: 12),
         if (isActive)
           FilledButton.tonal(
-            onPressed: () async {
-              final result = await notifier.stopRecording();
-              if (!context.mounted) return;
-              if (extra is RecordingEditContext) {
-                final editContext = extra as RecordingEditContext;
-                context.go(
-                  '/metadata',
-                  extra: RecordingEditContext(
-                    noteId: editContext.noteId,
-                    recordingResult: result,
-                  ),
-                );
-                return;
-              }
-              context.go('/metadata', extra: result);
-            },
+            onPressed: () async => _stopRecording(notifier),
             child: const Text('Stop & continue'),
           ),
       ],

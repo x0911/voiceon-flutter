@@ -54,9 +54,27 @@ class AudioService {
     _playerInitialized = true;
   }
 
-  Future<bool> ensureMicrophonePermission() async {
+  Future<PermissionStatus> requestMicrophonePermission() async {
     final status = await Permission.microphone.request();
-    return status.isGranted;
+    return status;
+  }
+
+  Future<bool> ensureMicrophonePermission() async {
+    final status = await Permission.microphone.status;
+    if (status.isGranted) {
+      return true;
+    }
+
+    final requested = await requestMicrophonePermission();
+    return requested.isGranted;
+  }
+
+  Future<bool> isMicrophonePermissionPermanentlyDenied() async {
+    return await Permission.microphone.isPermanentlyDenied;
+  }
+
+  Future<bool> shouldShowMicrophonePermissionRationale() async {
+    return await Permission.microphone.shouldShowRequestRationale;
   }
 
   Future<String> _createRecordingPath() async {

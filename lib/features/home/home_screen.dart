@@ -5,23 +5,51 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/models/note.dart';
+import '../../core/models/person.dart';
 import '../../core/repositories/note_repository.dart';
 import '../../core/services/audio_service.dart';
 import '../../core/theme/theme_provider.dart';
 import 'home_state.dart';
 import 'note_card.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  Widget build(BuildContext context) {
     final notesAsync = ref.watch(homeNotesProvider);
     final peopleAsync = ref.watch(homePeopleProvider);
     final filters = ref.watch(homeFilterProvider);
     final filterNotifier = ref.read(homeFilterProvider.notifier);
     final noteRepository = ref.watch(noteRepositoryProvider);
     final audioService = ref.watch(audioServiceProvider);
+
+    ref.listen<AsyncValue<List<NoteModel>>>(homeNotesProvider, (
+      previous,
+      next,
+    ) {
+      if (next.hasError && previous?.hasError == false) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not load notes.')));
+      }
+    });
+
+    ref.listen<AsyncValue<List<PersonModel>>>(homePeopleProvider, (
+      previous,
+      next,
+    ) {
+      if (next.hasError && previous?.hasError == false) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not load people.')));
+      }
+    });
 
     NotesCompanion noteToCompanion(NoteModel note) {
       return NotesCompanion(
