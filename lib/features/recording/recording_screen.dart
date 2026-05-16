@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../metadata/metadata_screen.dart';
 import 'recording_state.dart';
 
 class RecordingScreen extends ConsumerWidget {
-  const RecordingScreen({super.key});
+  final Object? extra;
+
+  const RecordingScreen({super.key, this.extra});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -20,7 +23,11 @@ class RecordingScreen extends ConsumerWidget {
           onPressed: () async {
             await notifier.cancelRecording();
             if (!context.mounted) return;
-            context.go('/');
+            if (extra is RecordingEditContext) {
+              context.go('/note/${(extra as RecordingEditContext).noteId}');
+            } else {
+              context.go('/');
+            }
           },
         ),
         actions: [
@@ -183,6 +190,17 @@ class RecordingScreen extends ConsumerWidget {
             onPressed: () async {
               final result = await notifier.stopRecording();
               if (!context.mounted) return;
+              if (extra is RecordingEditContext) {
+                final editContext = extra as RecordingEditContext;
+                context.go(
+                  '/metadata',
+                  extra: RecordingEditContext(
+                    noteId: editContext.noteId,
+                    recordingResult: result,
+                  ),
+                );
+                return;
+              }
               context.go('/metadata', extra: result);
             },
             child: const Text('Stop & continue'),

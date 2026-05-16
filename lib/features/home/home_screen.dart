@@ -1,9 +1,12 @@
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/database/app_database.dart';
 import '../../core/models/note.dart';
 import '../../core/repositories/note_repository.dart';
+import '../../core/services/audio_service.dart';
 import 'home_state.dart';
 import 'note_card.dart';
 
@@ -17,6 +20,53 @@ class HomeScreen extends ConsumerWidget {
     final filters = ref.watch(homeFilterProvider);
     final filterNotifier = ref.read(homeFilterProvider.notifier);
     final noteRepository = ref.watch(noteRepositoryProvider);
+    final audioService = ref.watch(audioServiceProvider);
+
+    NotesCompanion noteToCompanion(NoteModel note) {
+      return NotesCompanion(
+        id: drift.Value(note.id),
+        label: drift.Value(note.label),
+        description: drift.Value(note.description),
+        content: drift.Value(note.content),
+        priority: drift.Value(note.priority.value),
+        isTodo: drift.Value(note.isTodo),
+        isCompleted: drift.Value(note.isCompleted),
+        dueDate: drift.Value(note.dueDate),
+        audioPath: drift.Value(note.audioPath),
+        audioDurationSeconds: drift.Value(note.audioDurationSeconds),
+        createdAt: drift.Value(note.createdAt),
+        updatedAt: drift.Value(note.updatedAt),
+      );
+    }
+
+    Future<void> deleteNote(NoteModel note) async {
+      try {
+        await noteRepository.deleteNote(note.id);
+        await audioService.deleteAudio(note.audioPath);
+
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Note deleted'),
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () async {
+                await noteRepository.saveNoteWithPeople(
+                  noteToCompanion(note),
+                  note.taggedPeople.map((person) => person.id).toList(),
+                );
+              },
+            ),
+          ),
+        );
+      } catch (_) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not delete note.')));
+      }
+    }
 
     return Scaffold(
       body: CustomScrollView(
@@ -157,18 +207,29 @@ class HomeScreen extends ConsumerWidget {
                           color: Colors.grey,
                         ),
                         const SizedBox(height: 24),
-                        const Text(
-                          'No notes yet',
-                          style: TextStyle(
+                        Text(
+                          filters.hasFilters
+                              ? 'No notes match your filters'
+                              : 'No notes yet',
+                          style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 12),
-                        const Text(
-                          'Start a new voice note and add metadata to keep your ideas organized.',
+                        Text(
+                          filters.hasFilters
+                              ? 'Try clearing filters or add a new note.'
+                              : 'Tap + to capture your first voice note.',
                           textAlign: TextAlign.center,
                         ),
+                        if (filters.hasFilters) ...[
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            onPressed: filterNotifier.clearFilters,
+                            child: const Text('Clear filters'),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -178,14 +239,33 @@ class HomeScreen extends ConsumerWidget {
               return SliverList(
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final note = notes[index];
-                  return NoteCard(
-                    note: note,
-                    onToggleCompleted: note.isTodo
-                        ? (value) => noteRepository.toggleNoteCompletion(
-                            note.id,
-                            value,
-                          )
-                        : null,
+                  return Dismissible(
+                    key: ValueKey(note.id),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      margin: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      child: const Icon(Icons.delete, color: Colors.white),
+                    ),
+                    onDismissed: (_) => deleteNote(note),
+                    child: NoteCard(
+                      note: note,
+                      onToggleCompleted: note.isTodo
+                          ? (value) => noteRepository.toggleNoteCompletion(
+                              note.id,
+                              value,
+                            )
+                          : null,
+                      onTap: () => context.go('/note/${note.id}'),
+                    ),
                   );
                 }, childCount: notes.length),
               );

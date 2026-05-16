@@ -83,6 +83,18 @@ class NoteRepository {
 
   Future<bool> updateNote(NotesCompanion note) => _notesDao.updateNote(note);
 
+  Future<bool> updateNoteWithPeople(
+    NotesCompanion note,
+    List<String> personIds,
+  ) async {
+    final noteId = note.id.present
+        ? note.id.value
+        : (throw ArgumentError('Note id is required for an update.'));
+    final updated = await _notesDao.updateNote(note);
+    await _notePeopleDao.setNotePeople(noteId, personIds);
+    return updated;
+  }
+
   Future<int> deleteNote(String id) => _notesDao.deleteNote(id);
 
   Future<bool> toggleNoteCompletion(String noteId, bool isCompleted) {

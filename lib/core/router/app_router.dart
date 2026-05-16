@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/home/home_screen.dart';
 import '../../features/metadata/metadata_screen.dart';
+import '../../features/note_detail/note_detail_screen.dart';
 import '../../features/recording/recording_screen.dart';
 import '../../core/services/audio_service.dart';
 
@@ -17,13 +18,19 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/record',
       name: 'record',
-      builder: (context, state) => const RecordingScreen(),
+      builder: (context, state) => RecordingScreen(extra: state.extra),
     ),
     GoRoute(
       path: '/metadata',
       name: 'metadata',
       builder: (context, state) {
         final extra = state.extra;
+        if (extra is RecordingEditContext) {
+          return MetadataScreen(
+            recordingResult: extra.recordingResult,
+            editingNoteId: extra.noteId,
+          );
+        }
         if (extra is RecordingResult) {
           return MetadataScreen(recordingResult: extra);
         }
@@ -31,6 +38,19 @@ final appRouter = GoRouter(
         return const Scaffold(
           body: Center(child: Text('Recording details are missing.')),
         );
+      },
+    ),
+    GoRoute(
+      path: '/note/:id',
+      name: 'noteDetail',
+      builder: (context, state) {
+        final id = state.pathParameters['id'];
+        if (id == null || id.isEmpty) {
+          return const Scaffold(
+            body: Center(child: Text('Note ID is invalid.')),
+          );
+        }
+        return NoteDetailScreen(noteId: id);
       },
     ),
   ],

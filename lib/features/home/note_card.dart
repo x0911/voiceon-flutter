@@ -5,82 +5,92 @@ import '../../core/models/person.dart';
 class NoteCard extends StatelessWidget {
   final NoteModel note;
   final ValueChanged<bool>? onToggleCompleted;
+  final VoidCallback? onTap;
 
-  const NoteCard({super.key, required this.note, this.onToggleCompleted});
+  const NoteCard({
+    super.key,
+    required this.note,
+    this.onToggleCompleted,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final dueText = _formatDueText(note.dueDate);
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    note.label.isNotEmpty ? note.label : 'Untitled note',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ),
-                _PriorityBadge(priority: note.priority),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              note.description.isNotEmpty ? note.description : note.content,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                if (note.isTodo) ...[
-                  Checkbox(
-                    value: note.isCompleted,
-                    onChanged: onToggleCompleted == null
-                        ? null
-                        : (value) {
-                            final callback = onToggleCompleted;
-                            if (value != null && callback != null) {
-                              callback(value);
-                            }
-                          },
-                  ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Card(
+        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Expanded(
                     child: Text(
-                      note.isCompleted ? 'Completed' : 'Todo',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      note.label.isNotEmpty ? note.label : 'Untitled note',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
-                ] else ...[
-                  const Icon(Icons.article_outlined, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Note',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                  _PriorityBadge(priority: note.priority),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                note.description.isNotEmpty ? note.description : note.content,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  if (note.isTodo) ...[
+                    Checkbox(
+                      value: note.isCompleted,
+                      onChanged: onToggleCompleted == null
+                          ? null
+                          : (value) {
+                              final callback = onToggleCompleted;
+                              if (value != null && callback != null) {
+                                callback(value);
+                              }
+                            },
                     ),
-                  ),
+                    Expanded(
+                      child: Text(
+                        note.isCompleted ? 'Completed' : 'Todo',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ] else ...[
+                    const Icon(Icons.article_outlined, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Note',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                  if (note.dueDate != null) ...[
+                    const Icon(Icons.calendar_today_outlined, size: 18),
+                    const SizedBox(width: 6),
+                    Text(dueText, style: Theme.of(context).textTheme.bodySmall),
+                  ],
                 ],
-                if (note.dueDate != null) ...[
-                  const Icon(Icons.calendar_today_outlined, size: 18),
-                  const SizedBox(width: 6),
-                  Text(dueText, style: Theme.of(context).textTheme.bodySmall),
-                ],
+              ),
+              if (note.taggedPeople.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                _TaggedPeopleRow(people: note.taggedPeople),
               ],
-            ),
-            if (note.taggedPeople.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              _TaggedPeopleRow(people: note.taggedPeople),
             ],
-          ],
+          ),
         ),
       ),
     );

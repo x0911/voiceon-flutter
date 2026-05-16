@@ -17,10 +17,22 @@ final peopleStreamProvider = StreamProvider.autoDispose<List<PersonModel>>((
   return peopleRepository.watchAllPeople();
 });
 
-class MetadataScreen extends ConsumerStatefulWidget {
+class RecordingEditContext {
+  final String noteId;
   final RecordingResult recordingResult;
 
-  const MetadataScreen({super.key, required this.recordingResult});
+  RecordingEditContext({required this.noteId, required this.recordingResult});
+}
+
+class MetadataScreen extends ConsumerStatefulWidget {
+  final RecordingResult recordingResult;
+  final String? editingNoteId;
+
+  const MetadataScreen({
+    super.key,
+    required this.recordingResult,
+    this.editingNoteId,
+  });
 
   @override
   ConsumerState<MetadataScreen> createState() => _MetadataScreenState();
@@ -40,7 +52,50 @@ class _MetadataScreenState extends ConsumerState<MetadataScreen> {
   NotePriority _priority = NotePriority.low;
   final Set<String> _selectedPersonIds = {};
   bool _isSaving = false;
+  bool _isLoadingExistingNote = false;
   String? _errorMessage;
+  NoteModel? _existingNote;
+  String? _originalAudioPath;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.editingNoteId != null) {
+      _loadExistingNote();
+    }
+  }
+
+  Future<void> _loadExistingNote() async {
+    setState(() {
+      _isLoadingExistingNote = true;
+    });
+
+    final notesRepository = ref.read(noteRepositoryProvider);
+    final existingNote = await notesRepository.getNoteById(
+      widget.editingNoteId!,
+    );
+
+    if (existingNote != null) {
+      _existingNote = existingNote;
+      _originalAudioPath = existingNote.audioPath;
+      _labelController.text = existingNote.label;
+      _descriptionController.text = existingNote.description;
+      _contentController.text = existingNote.content;
+      _isTodo = existingNote.isTodo;
+      _isCompleted = existingNote.isCompleted;
+      _dueDate = existingNote.dueDate;
+      _priority = existingNote.priority;
+      _selectedPersonIds.addAll(
+        existingNote.taggedPeople.map((person) => person.id),
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoadingExistingNote = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -56,6 +111,20 @@ class _MetadataScreenState extends ConsumerState<MetadataScreen> {
     final peopleAsync = ref.watch(peopleStreamProvider);
     final notesRepository = ref.watch(noteRepositoryProvider);
     final audioService = ref.watch(audioServiceProvider);
+
+    if (widget.editingNoteId != null && _isLoadingExistingNote) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Metadata')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (widget.editingNoteId != null && _existingNote == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Metadata')),
+        body: const Center(child: Text('Original note not found.')),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Metadata')),
@@ -346,13 +415,15 @@ class _MetadataScreenState extends ConsumerState<MetadataScreen> {
         FilledButton(
           onPressed: _isSaving
               ? null
-              : () => _saveNote(context, notesRepository),
+              : () => _saveNote(context, notesRepository, audioService),
           child: _isSaving
               ? const SizedBox(
                   height: 20,
                   child: Center(child: CircularProgressIndicator()),
                 )
-              : const Text('Save Note'),
+              : Text(
+                  widget.editingNoteId != null ? 'Save Changes' : 'Save Note',
+                ),
         ),
         const SizedBox(height: 12),
         TextButton(
@@ -361,7 +432,11 @@ class _MetadataScreenState extends ConsumerState<MetadataScreen> {
               : () async {
                   await audioService.deleteAudio(widget.recordingResult.path);
                   if (!context.mounted) return;
-                  context.go('/');
+                  if (widget.editingNoteId != null) {
+                    context.go('/note/${widget.editingNoteId}');
+                  } else {
+                    context.go('/');
+                  }
                 },
           child: const Text('Discard'),
         ),
@@ -409,6 +484,7 @@ class _MetadataScreenState extends ConsumerState<MetadataScreen> {
   Future<void> _saveNote(
     BuildContext context,
     NoteRepository notesRepository,
+    AudioService audioService,
   ) async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -429,6 +505,9 @@ class _MetadataScreenState extends ConsumerState<MetadataScreen> {
     final now = DateTime.now();
     final content = _contentController.text.trim();
     final note = NotesCompanion(
+      id: widget.editingNoteId != null
+          ? drift.Value(widget.editingNoteId!)
+          : const drift.Value.absent(),
       label: drift.Value(_labelController.text.trim()),
       description: drift.Value(_descriptionController.text.trim()),
       content: drift.Value(content),
@@ -438,20 +517,42 @@ class _MetadataScreenState extends ConsumerState<MetadataScreen> {
       dueDate: drift.Value(_dueDate),
       audioPath: drift.Value(widget.recordingResult.path),
       audioDurationSeconds: drift.Value(widget.recordingResult.durationSeconds),
-      createdAt: drift.Value(now),
+      createdAt: drift.Value(_existingNote?.createdAt ?? now),
       updatedAt: drift.Value(now),
     );
 
     try {
-      await notesRepository.saveNoteWithPeople(
-        note,
-        _selectedPersonIds.toList(),
-      );
+      if (widget.editingNoteId != null) {
+        await notesRepository.updateNoteWithPeople(
+          note,
+          _selectedPersonIds.toList(),
+        );
+        if (_originalAudioPath != null &&
+            _originalAudioPath != widget.recordingResult.path) {
+          await audioService.deleteAudio(_originalAudioPath!);
+        }
+      } else {
+        await notesRepository.saveNoteWithPeople(
+          note,
+          _selectedPersonIds.toList(),
+        );
+      }
+
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Note saved successfully.')));
-      context.go('/');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.editingNoteId != null
+                ? 'Note updated successfully.'
+                : 'Note saved successfully.',
+          ),
+        ),
+      );
+      if (widget.editingNoteId != null) {
+        context.go('/note/${widget.editingNoteId}');
+      } else {
+        context.go('/');
+      }
     } catch (_) {
       setState(() {
         _errorMessage = 'Unable to save note. Please try again.';
