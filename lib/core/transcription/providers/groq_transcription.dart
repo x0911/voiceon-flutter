@@ -16,7 +16,14 @@ Future<String> groqTranscribe(String audioPath, String apiKey) async {
 
     request.headers['Authorization'] = 'Bearer $apiKey';
     request.fields['model'] = 'whisper-large-v3';
-    request.fields['response_format'] = 'json';
+    request.fields['response_format'] = 'verbose_json';
+    request.fields['prompt'] =
+        'This recording contains a mix of Arabic and English. '
+        'Transcribe exactly as spoken. '
+        'Keep English words in English (Latin script) and Arabic words in Arabic (Arabic script). '
+        'Do not translate any part of the audio. '
+        'هذا التسجيل يحتوي على مزيج من العربية والإنجليزية. '
+        'اكتب النص كما يُقال بالضبط دون ترجمة.';
 
     final fileBytes = await file.readAsBytes();
     request.files.add(
@@ -30,8 +37,8 @@ Future<String> groqTranscribe(String audioPath, String apiKey) async {
       throw Exception('HTTP ${response.statusCode}: $body');
     }
 
-    final json = jsonDecode(body);
-    return json['text'] as String;
+    final decoded = jsonDecode(body) as Map<String, dynamic>;
+    return (decoded['text'] as String? ?? '').trim();
   } catch (e) {
     throw Exception('Groq transcription failed: $e');
   }

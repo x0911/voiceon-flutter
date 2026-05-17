@@ -45,13 +45,6 @@ class NoteCard extends StatelessWidget {
           color: backgroundColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: borderColor),
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).shadowColor.withAlpha(20),
-              blurRadius: 18,
-              offset: const Offset(0, 10),
-            ),
-          ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
@@ -106,17 +99,16 @@ class NoteCard extends StatelessWidget {
                         Row(
                           children: [
                             if (note.isTodo) ...[
-                              Checkbox(
-                                value: note.isCompleted,
-                                onChanged: onToggleCompleted == null
-                                    ? null
-                                    : (value) {
-                                        final callback = onToggleCompleted;
-                                        if (value != null && callback != null) {
-                                          callback(value);
-                                        }
-                                      },
-                              ),
+                              note.isCompleted
+                                  ? const Icon(
+                                      Icons.check_box_outlined,
+                                      size: 20,
+                                    )
+                                  : const Icon(
+                                      Icons.check_box_outline_blank,
+                                      size: 20,
+                                    ),
+                              const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   note.isCompleted ? 'Completed' : 'Todo',
@@ -212,7 +204,7 @@ class _PriorityBadge extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: Text(
-        priority.name.toUpperCase(),
+        priority.name[0].toUpperCase() + priority.name.substring(1),
         style: TextStyle(
           color: color,
           fontWeight: FontWeight.w600,

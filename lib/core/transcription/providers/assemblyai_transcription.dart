@@ -32,7 +32,7 @@ Future<String> assemblyaiTranscribe(String audioPath, String apiKey) async {
     final submitResponse = await http.post(
       Uri.parse('https://api.assemblyai.com/v2/transcript'),
       headers: {'Authorization': apiKey, 'Content-Type': 'application/json'},
-      body: jsonEncode({'audio_url': uploadUrl}),
+      body: jsonEncode({'audio_url': uploadUrl, 'language_detection': true}),
     );
 
     if (submitResponse.statusCode != 200) {

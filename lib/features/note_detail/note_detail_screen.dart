@@ -360,6 +360,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
                 _buildSectionTitle('Audio player'),
                 const SizedBox(height: 12),
                 Card(
+                  shadowColor: Colors.transparent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -404,8 +405,12 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
                               playerController: _playerController,
                               playerWaveStyle: PlayerWaveStyle(
                                 showSeekLine: true,
-                                fixedWaveColor: Colors.teal.withAlpha(64),
-                                liveWaveColor: Colors.teal,
+                                fixedWaveColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withAlpha(64),
+                                liveWaveColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary,
                                 seekLineColor: Colors.white70,
                                 spacing: 4,
                                 waveThickness: 3,
@@ -749,6 +754,13 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
                 return FilterChip(
                   label: Text(person.name),
                   selected: selected,
+                  selectedColor: Theme.of(context).colorScheme.primary,
+                  labelStyle: TextStyle(
+                    color: selected
+                        ? Colors.white
+                        : Theme.of(context).colorScheme.onSurface,
+                  ),
+                  selectedShadowColor: Colors.transparent,
                   showCheckmark: false,
                   onSelected: (_) {
                     setState(() {

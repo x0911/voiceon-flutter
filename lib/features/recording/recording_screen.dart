@@ -209,7 +209,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
             child: Center(
               child: Text(
                 '5:00 max',
-                style: Theme.of(context).textTheme.bodySmall,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.white),
               ),
             ),
           ),
@@ -361,6 +363,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                 ? Colors.redAccent
                 : Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
+            fontFamily: 'DM Serif Display',
           ),
         ),
         const SizedBox(height: 8),

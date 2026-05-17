@@ -16,10 +16,25 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  /// Opens the filter bottom sheet dialog.
+  void _openFilters(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        // Use a ConsumerWidget inside the sheet so it can watch Riverpod state.
+        return _FilterSheet();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final notesAsync = ref.watch(homeNotesProvider);
-    final peopleAsync = ref.watch(homePeopleProvider);
     final filters = ref.watch(homeFilterProvider);
     final filterNotifier = ref.read(homeFilterProvider.notifier);
     final noteRepository = ref.watch(noteRepositoryProvider);
@@ -35,17 +50,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     });
 
-    ref.listen<AsyncValue<List<PersonModel>>>(homePeopleProvider, (
-      previous,
-      next,
-    ) {
-      if (next.hasError && previous?.hasError == false) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Could not load people.')));
-      }
-    });
-
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -55,12 +59,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             snap: false,
             title: const Text('Voiceon'),
             actions: [
-              if (filters.hasFilters)
-                IconButton(
-                  icon: const Icon(Icons.filter_alt_off),
-                  tooltip: 'Clear filters',
-                  onPressed: filterNotifier.clearFilters,
-                ),
+              // Filter icon — badge shows when any filter is active
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.tune),
+                    tooltip: 'Filters',
+                    onPressed: () => _openFilters(context),
+                  ),
+                  if (filters.hasFilters)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.error,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
               IconButton(
                 icon: const Icon(Icons.settings_outlined),
                 tooltip: 'Settings',
@@ -68,9 +90,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ],
           ),
+
+          // Search field — stays on the main screen, not in the dialog
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -94,150 +118,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _FilterSection(
-                    title: 'Priority',
-                    children: NotePriority.values.map((priority) {
-                      return FilterChip(
-                        label: Text(
-                          priority.name[0].toUpperCase() +
-                              priority.name.substring(1),
-                        ),
-                        selected: filters.priorities.contains(priority),
-                        showCheckmark: false,
-                        selectedColor: Theme.of(context).colorScheme.primary,
-                        labelStyle: TextStyle(
-                          color: filters.priorities.contains(priority)
-                              ? Colors.white
-                              : Theme.of(context).colorScheme.onSurface,
-                          fontWeight: filters.priorities.contains(priority)
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        ),
-                        selectedShadowColor: Colors.transparent,
-                        onSelected: (_) =>
-                            filterNotifier.togglePriority(priority),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 16),
-                  _FilterSection(
-                    title: 'Type',
-                    children: [
-                      ChoiceChip(
-                        label: const Text('Todo'),
-                        selected: filters.todoFilter == HomeTodoFilter.todo,
-                        selectedColor: Theme.of(context).colorScheme.primary,
-                        labelStyle: TextStyle(
-                          color: filters.todoFilter == HomeTodoFilter.todo
-                              ? Colors.white
-                              : Theme.of(context).colorScheme.onSurface,
-                        ),
-                        selectedShadowColor: Colors.transparent,
-                        onSelected: (_) => filterNotifier.setTodoFilter(
-                          filters.todoFilter == HomeTodoFilter.todo
-                              ? HomeTodoFilter.all
-                              : HomeTodoFilter.todo,
-                        ),
-                      ),
-                      ChoiceChip(
-                        label: const Text('Non-Todo'),
-                        selected: filters.todoFilter == HomeTodoFilter.nonTodo,
-                        selectedColor: Theme.of(context).colorScheme.primary,
-                        labelStyle: TextStyle(
-                          color: filters.todoFilter == HomeTodoFilter.nonTodo
-                              ? Colors.white
-                              : Theme.of(context).colorScheme.onSurface,
-                        ),
-                        selectedShadowColor: Colors.transparent,
-                        onSelected: (_) => filterNotifier.setTodoFilter(
-                          filters.todoFilter == HomeTodoFilter.nonTodo
-                              ? HomeTodoFilter.all
-                              : HomeTodoFilter.nonTodo,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _FilterSection(
-                    title: 'Status',
-                    children: [
-                      ChoiceChip(
-                        label: const Text('Pending'),
-                        selected:
-                            filters.statusFilter == HomeStatusFilter.pending,
-                        selectedColor: Theme.of(context).colorScheme.primary,
-                        labelStyle: TextStyle(
-                          color:
-                              filters.statusFilter == HomeStatusFilter.pending
-                              ? Colors.white
-                              : Theme.of(context).colorScheme.onSurface,
-                        ),
-                        selectedShadowColor: Colors.transparent,
-                        onSelected: (_) => filterNotifier.setStatusFilter(
-                          filters.statusFilter == HomeStatusFilter.pending
-                              ? HomeStatusFilter.all
-                              : HomeStatusFilter.pending,
-                        ),
-                      ),
-                      ChoiceChip(
-                        label: const Text('Completed'),
-                        selected:
-                            filters.statusFilter == HomeStatusFilter.completed,
-                        selectedColor: Theme.of(context).colorScheme.primary,
-                        labelStyle: TextStyle(
-                          color:
-                              filters.statusFilter == HomeStatusFilter.completed
-                              ? Colors.white
-                              : Theme.of(context).colorScheme.onSurface,
-                        ),
-                        selectedShadowColor: Colors.transparent,
-                        onSelected: (_) => filterNotifier.setStatusFilter(
-                          filters.statusFilter == HomeStatusFilter.completed
-                              ? HomeStatusFilter.all
-                              : HomeStatusFilter.completed,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  peopleAsync.when(
-                    data: (people) {
-                      if (people.isEmpty) {
-                        return const SizedBox.shrink();
-                      }
-                      return _FilterSection(
-                        title: 'People',
-                        children: people.map((person) {
-                          final selected = filters.selectedPersonIds.contains(
-                            person.id,
-                          );
-                          return FilterChip(
-                            label: Text(person.name),
-                            selected: selected,
-                            showCheckmark: false,
-                            selectedColor: Theme.of(
-                              context,
-                            ).colorScheme.primary,
-                            labelStyle: TextStyle(
-                              color: selected
-                                  ? Colors.white
-                                  : Theme.of(context).colorScheme.onSurface,
-                            ),
-                            selectedShadowColor: Colors.transparent,
-                            onSelected: (_) =>
-                                filterNotifier.togglePersonFilter(person.id),
-                          );
-                        }).toList(),
-                      );
-                    },
-                    loading: () => const SizedBox.shrink(),
-                    error: (error, stack) => const SizedBox.shrink(),
-                  ),
-                  const SizedBox(height: 16),
                 ],
               ),
             ),
           ),
+
+          // Notes list
           notesAsync.when(
             data: (notes) {
               if (notes.isEmpty) {
@@ -308,6 +194,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: Center(child: Text('Unable to load notes: $error')),
             ),
           ),
+
           const SliverToBoxAdapter(child: SizedBox(height: 96)),
         ],
       ),
@@ -320,20 +207,280 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
-class _FilterSection extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
+// ---------------------------------------------------------------------------
+// Filter bottom sheet — lives in its own ConsumerWidget so it rebuilds
+// independently from the main screen when filter state changes.
+// ---------------------------------------------------------------------------
 
-  const _FilterSection({required this.title, required this.children});
+class _FilterSheet extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filters = ref.watch(homeFilterProvider);
+    final filterNotifier = ref.read(homeFilterProvider.notifier);
+    final peopleAsync = ref.watch(homePeopleProvider);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.4,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (_, scrollController) {
+        return Column(
+          children: [
+            // Handle bar
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 4),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+
+            // Header row
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Text(
+                    'Filters',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (filters.hasFilters)
+                    TextButton.icon(
+                      onPressed: () {
+                        filterNotifier.clearFilters();
+                        Navigator.of(context).pop();
+                      },
+                      icon: const Icon(Icons.filter_alt_off, size: 18),
+                      label: const Text('Clear all'),
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+
+            const Divider(height: 1),
+
+            // Scrollable filter content
+            Expanded(
+              child: ListView(
+                controller: scrollController,
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                children: [
+                  // ── Priority ────────────────────────────────────────
+                  _SheetSection(
+                    title: 'Priority',
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: NotePriority.values.map((priority) {
+                        final selected = filters.priorities.contains(priority);
+                        return FilterChip(
+                          label: Text(
+                            priority.name[0].toUpperCase() +
+                                priority.name.substring(1),
+                          ),
+                          selected: selected,
+                          showCheckmark: false,
+                          selectedColor: Theme.of(context).colorScheme.primary,
+                          labelStyle: TextStyle(
+                            color: selected
+                                ? Colors.white
+                                : Theme.of(context).colorScheme.onSurface,
+                            fontWeight: selected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                          selectedShadowColor: Colors.transparent,
+                          onSelected: (_) =>
+                              filterNotifier.togglePriority(priority),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ── Type ────────────────────────────────────────────
+                  _SheetSection(
+                    title: 'Type',
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _typeChip(
+                          context: context,
+                          label: 'Todo',
+                          selected: filters.todoFilter == HomeTodoFilter.todo,
+                          onTap: () => filterNotifier.setTodoFilter(
+                            filters.todoFilter == HomeTodoFilter.todo
+                                ? HomeTodoFilter.all
+                                : HomeTodoFilter.todo,
+                          ),
+                        ),
+                        _typeChip(
+                          context: context,
+                          label: 'Non-Todo',
+                          selected:
+                              filters.todoFilter == HomeTodoFilter.nonTodo,
+                          onTap: () => filterNotifier.setTodoFilter(
+                            filters.todoFilter == HomeTodoFilter.nonTodo
+                                ? HomeTodoFilter.all
+                                : HomeTodoFilter.nonTodo,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ── Status ──────────────────────────────────────────
+                  _SheetSection(
+                    title: 'Status',
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _typeChip(
+                          context: context,
+                          label: 'Pending',
+                          selected:
+                              filters.statusFilter == HomeStatusFilter.pending,
+                          onTap: () => filterNotifier.setStatusFilter(
+                            filters.statusFilter == HomeStatusFilter.pending
+                                ? HomeStatusFilter.all
+                                : HomeStatusFilter.pending,
+                          ),
+                        ),
+                        _typeChip(
+                          context: context,
+                          label: 'Completed',
+                          selected:
+                              filters.statusFilter ==
+                              HomeStatusFilter.completed,
+                          onTap: () => filterNotifier.setStatusFilter(
+                            filters.statusFilter == HomeStatusFilter.completed
+                                ? HomeStatusFilter.all
+                                : HomeStatusFilter.completed,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ── People ──────────────────────────────────────────
+                  peopleAsync.when(
+                    data: (people) {
+                      if (people.isEmpty) return const SizedBox.shrink();
+                      return _SheetSection(
+                        title: 'People',
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: people.map((person) {
+                            final selected = filters.selectedPersonIds.contains(
+                              person.id,
+                            );
+                            return FilterChip(
+                              label: Text(person.name),
+                              selected: selected,
+                              showCheckmark: false,
+                              selectedColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                              labelStyle: TextStyle(
+                                color: selected
+                                    ? Colors.white
+                                    : Theme.of(context).colorScheme.onSurface,
+                              ),
+                              selectedShadowColor: Colors.transparent,
+                              onSelected: (_) =>
+                                  filterNotifier.togglePersonFilter(person.id),
+                            );
+                          }).toList(),
+                        ),
+                      );
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ),
+
+            // Apply / Done button
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Apply Filters'),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _typeChip({
+    required BuildContext context,
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      showCheckmark: false,
+      selectedColor: Theme.of(context).colorScheme.primary,
+      labelStyle: TextStyle(
+        color: selected
+            ? Colors.white
+            : Theme.of(context).colorScheme.onSurface,
+      ),
+      selectedShadowColor: Colors.transparent,
+      onSelected: (_) => onTap(),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Small helper widget for a labelled section inside the filter sheet.
+// ---------------------------------------------------------------------------
+
+class _SheetSection extends StatelessWidget {
+  final String title;
+  final Widget child;
+
+  const _SheetSection({required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: Theme.of(context).textTheme.labelLarge),
-        const SizedBox(height: 8),
-        Wrap(spacing: 8, runSpacing: 8, children: children),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 10),
+        child,
       ],
     );
   }

@@ -11,10 +11,10 @@ class AppTheme {
   static ThemeData _buildLightTheme() {
     final base = FlexColorScheme.light(
       colors: const FlexSchemeColor(
-        primary: Color(0xFF00796B),
-        primaryContainer: Color(0xFFB2DFDB),
-        secondary: Color(0xFF004D40),
-        tertiary: Color(0xFF80CBC4),
+        primary: Color(0xFF0D67B5),
+        primaryContainer: Color(0xFFDCE9FD),
+        secondary: Color(0xFF0A4F8A),
+        tertiary: Color(0xFF72A7D9),
       ),
       surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
       blendLevel: 9,
@@ -55,10 +55,10 @@ class AppTheme {
   static ThemeData _buildDarkTheme() {
     final base = FlexColorScheme.dark(
       colors: const FlexSchemeColor(
-        primary: Color(0xFF4DB6AC),
-        primaryContainer: Color(0xFF004D40),
-        secondary: Color(0xFF80CBC4),
-        tertiary: Color(0xFF1DE9B6),
+        primary: Color(0xFF0D67B5),
+        primaryContainer: Color(0xFF0F3A67),
+        secondary: Color(0xFF93C2FF),
+        tertiary: Color(0xFF5A9BFF),
       ),
       surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
       blendLevel: 15,

@@ -35,7 +35,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final apiKey = provider != null
         ? await settingsRepo.getApiKey(provider)
         : '';
-
     if (mounted) {
       setState(() {
         _selectedProvider = provider;
@@ -78,14 +77,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       });
       return;
     }
-
     setState(() {
       _isTesting = true;
       _testResult = null;
     });
 
     final transcriptionServiceFuture = ref.read(transcriptionServiceProvider);
-
     if (transcriptionServiceFuture is! AsyncData<TranscriptionService>) {
       setState(() {
         _isTesting = false;
@@ -110,12 +107,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  // FIX: On Android 11+ (API 30+), canLaunchUrl() returns false for https://
+  // URLs unless <queries> intent filters are declared in AndroidManifest.xml.
+  // The fix has two parts:
+  //   1. This code: always use LaunchMode.externalApplication and call
+  //      launchUrl() directly without gating on canLaunchUrl(). If it fails,
+  //      show a snackbar with the raw URL so the user can copy it.
+  //   2. AndroidManifest.xml: add the <queries> block (see instructions below).
   Future<void> _launchApiKeyUrl() async {
     if (_selectedProvider == null) return;
-    final url = Uri.parse(_selectedProvider!.apiKeyUrl);
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
+    final rawUrl = _selectedProvider!.apiKeyUrl;
+    final uri = Uri.parse(rawUrl);
+    try {
+      final success = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!success && mounted) {
+        _showUrlFallbackSnackbar(rawUrl);
+      }
+    } catch (_) {
+      if (mounted) _showUrlFallbackSnackbar(rawUrl);
     }
+  }
+
+  void _showUrlFallbackSnackbar(String url) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Cannot open browser. Visit:\n$url'),
+        duration: const Duration(seconds: 8),
+        action: SnackBarAction(label: 'OK', onPressed: () {}),
+      ),
+    );
   }
 
   void _clearApiKey() {
@@ -145,8 +168,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: Stack(
         children: [
           Container(
-            width:
-                250, // FIX: this will be overridden by the parent Row's constraints
+            width: 250,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
@@ -155,7 +177,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 color: selected
                     ? Theme.of(context).colorScheme.primary
                     : Colors.grey.shade300,
-                width: 2,
+                width: selected ? 2 : 1,
               ),
               boxShadow: selected
                   ? [
@@ -178,6 +200,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ],
             ),
           ),
+          if (selected)
+            const Positioned(
+              right: 4,
+              top: 4,
+              child: CircleAvatar(
+                radius: 10,
+                backgroundColor: Colors.white,
+                child: Icon(Icons.check_circle, size: 18, color: Colors.green),
+              ),
+            ),
         ],
       ),
     );
@@ -195,14 +227,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Appearance Section ──────────────────────────────────────
+            // ── Appearance ──────────────────────────────────────────────
             const Text('Appearance', style: TextStyle(letterSpacing: 1.2)),
             const SizedBox(height: 12),
-
-            // FIX: use Row with MainAxisSize.max + Expanded so each card
-            // gets exactly half the available width. This is valid because
-            // the Column's parent (SingleChildScrollView) provides a
-            // bounded width equal to the screen width.
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -229,23 +256,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 32),
 
-            // ── AI Transcription Section ────────────────────────────────
+            // ── AI Transcription ────────────────────────────────────────
             const Text(
               'AI Transcription',
               style: TextStyle(letterSpacing: 1.2),
             ),
             const SizedBox(height: 12),
 
-            // Provider Dropdown
-            // FIX: DropdownMenuItem children must NOT use Expanded — the
-            // dropdown renders items in an intrinsic-width context.
-            // Use Flexible with FlexFit.loose instead, or just let the
-            // Text overflow with TextOverflow.ellipsis.
             DropdownButtonFormField<AiProvider>(
               value: _selectedProvider,
-              isExpanded: true, // FIX: this makes the dropdown itself expand
-              // to fill the available width, so children
-              // don't need to force their own width.
+              isExpanded: true,
               decoration: InputDecoration(
                 labelText: 'Provider',
                 border: OutlineInputBorder(
@@ -256,10 +276,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 return DropdownMenuItem(
                   value: provider,
                   child: Row(
-                    // FIX: Do NOT use Expanded here. The dropdown menu
-                    // item row is in an unbounded context. Use
-                    // mainAxisSize.min and let each child size itself,
-                    // with Flexible (not Expanded) for the text.
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Flexible(
@@ -320,7 +336,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 8),
 
-            // Provider Description
             if (_selectedProvider != null) ...[
               Text(
                 _selectedProvider!.description,
@@ -329,7 +344,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 16),
             ],
 
-            // API Key Field
             if (_selectedProvider != null) ...[
               TextFormField(
                 controller: _apiKeyController,
@@ -340,10 +354,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  // FIX: suffixIcon with a Row must use MainAxisSize.min
-                  // and be wrapped in a SizedBox with explicit width, or
-                  // use suffixIconConstraints. Without this, the inner Row
-                  // tries to expand infinitely.
                   suffixIconConstraints: const BoxConstraints(
                     minWidth: 0,
                     minHeight: 0,
@@ -377,7 +387,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 12),
             ],
 
-            // Get API Key + Test buttons
             if (_selectedProvider != null) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -402,7 +411,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 8),
             ],
 
-            // Test Result
             if (_testResult != null)
               Container(
                 width: double.infinity,
@@ -445,7 +453,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
             const SizedBox(height: 32),
 
-            // ── About Section ───────────────────────────────────────────
+            // ── About ───────────────────────────────────────────────────
             const Divider(),
             const SizedBox(height: 16),
             Center(
@@ -455,8 +463,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     'assets/images/app-logo.png',
                     width: 64,
                     height: 64,
-                    errorBuilder: (_, __, ___) =>
-                        const Icon(Icons.mic, size: 64),
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.mic,
+                        size: 36,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text(

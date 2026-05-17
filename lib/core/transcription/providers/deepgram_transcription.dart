@@ -13,7 +13,7 @@ Future<String> deepgramTranscribe(String audioPath, String apiKey) async {
 
     final response = await http.post(
       Uri.parse(
-        'https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true',
+        'https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&detect_language=true',
       ),
       headers: {'Authorization': 'Token $apiKey', 'Content-Type': 'audio/mp4'},
       body: fileBytes,
