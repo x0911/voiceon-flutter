@@ -82,6 +82,14 @@ class _MetadataScreenState extends ConsumerState<MetadataScreen> {
       });
       debugPrint('MetadataScreen.initState: no transcript available');
     }
+
+    // Handle transcription errors
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      
+      // Future note: RecordingResult will include transcriptionError and showApiKeyBanner fields
+      // which can be handled here to show appropriate error messages and banners
+    });
   }
 
   Future<void> _loadExistingNote() async {

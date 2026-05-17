@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../core/repositories/settings_repository.dart';
 import '../metadata/metadata_screen.dart';
 import 'recording_state.dart';
 
@@ -261,28 +262,50 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
             ),
           ),
           if (isTranscribing)
-            Container(
-              color: Theme.of(
-                context,
-              ).colorScheme.surface.withAlpha((0.85 * 255).round()),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.mic, size: 68, color: Color(0xFF009688)),
-                    const SizedBox(height: 20),
-                    const CircularProgressIndicator(color: Color(0xFF009688)),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Transcribing your note...',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontFamily: 'Open Sans',
-                        fontWeight: FontWeight.w600,
-                      ),
+            FutureBuilder(
+              future: ref
+                  .read(settingsRepositoryProvider.future)
+                  .then((repo) => repo.getSelectedProvider()),
+              builder: (context, snapshot) {
+                final providerName =
+                    snapshot.data?.displayName ?? 'AI Provider';
+                return Container(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surface.withAlpha((0.85 * 255).round()),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.mic,
+                          size: 68,
+                          color: Color(0xFF009688),
+                        ),
+                        const SizedBox(height: 20),
+                        const CircularProgressIndicator(
+                          color: Color(0xFF009688),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'Transcribing...',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontFamily: 'Open Sans',
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Using $providerName',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Colors.grey[600]),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
         ],
       ),

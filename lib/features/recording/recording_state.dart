@@ -4,7 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/services/audio_service.dart';
-import '../../core/services/stt_service.dart';
+import '../../core/services/transcription_service.dart';
+import '../../core/transcription/transcription_result.dart';
 
 enum RecordingStatus { idle, recording, paused, transcribing, stopped }
 
@@ -16,6 +17,8 @@ class RecordingState {
   final int? durationSeconds;
   final double amplitude;
   final String? errorMessage;
+  final String? transcriptionError;
+  final bool showApiKeyBanner;
 
   const RecordingState({
     required this.status,
@@ -25,6 +28,8 @@ class RecordingState {
     required this.durationSeconds,
     required this.amplitude,
     required this.errorMessage,
+    this.transcriptionError,
+    this.showApiKeyBanner = false,
   });
 
   factory RecordingState.initial() {
@@ -36,6 +41,8 @@ class RecordingState {
       durationSeconds: null,
       amplitude: 0,
       errorMessage: null,
+      transcriptionError: null,
+      showApiKeyBanner: false,
     );
   }
 
@@ -47,6 +54,8 @@ class RecordingState {
     int? durationSeconds,
     double? amplitude,
     String? errorMessage,
+    String? transcriptionError,
+    bool? showApiKeyBanner,
   }) {
     return RecordingState(
       status: status ?? this.status,
@@ -56,6 +65,8 @@ class RecordingState {
       durationSeconds: durationSeconds ?? this.durationSeconds,
       amplitude: amplitude ?? this.amplitude,
       errorMessage: errorMessage ?? this.errorMessage,
+      transcriptionError: transcriptionError ?? this.transcriptionError,
+      showApiKeyBanner: showApiKeyBanner ?? this.showApiKeyBanner,
     );
   }
 
@@ -67,18 +78,17 @@ class RecordingState {
 final recordingStateProvider =
     StateNotifierProvider<RecordingNotifier, RecordingState>((ref) {
       final audioService = ref.watch(audioServiceProvider);
-      final sttService = ref.watch(sttServiceProvider);
-      return RecordingNotifier(audioService, sttService);
+      final transcriptionService = ref.watch(transcriptionServiceProvider);
+      return RecordingNotifier(audioService, transcriptionService);
     });
 
 class RecordingNotifier extends StateNotifier<RecordingState> {
   final AudioService _audioService;
-  final SttService _sttService;
+  final AsyncValue<TranscriptionService> _transcriptionService;
   Timer? _ticker;
-  StreamSubscription<String>? _transcriptionSubscription;
   StreamSubscription<double>? _amplitudeSubscription;
 
-  RecordingNotifier(this._audioService, this._sttService)
+  RecordingNotifier(this._audioService, this._transcriptionService)
     : super(RecordingState.initial()) {
     _amplitudeSubscription = _audioService.amplitudeStream.listen((value) {
       state = state.copyWith(amplitude: value);
@@ -88,7 +98,6 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
   Future<void> startRecording() async {
     try {
       final result = await _audioService.startRecording();
-      _transcriptionSubscription?.cancel();
 
       _startTicker();
       state = state.copyWith(
@@ -98,6 +107,8 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
         audioPath: result.path,
         durationSeconds: null,
         errorMessage: null,
+        transcriptionError: null,
+        showApiKeyBanner: false,
       );
     } catch (error) {
       state = state.copyWith(errorMessage: error.toString());
@@ -107,7 +118,6 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
   Future<void> pauseRecording() async {
     if (!state.isRecording) return;
     await _audioService.pauseRecording();
-    await _sttService.cancelRealtimeTranscription();
     _ticker?.cancel();
     state = state.copyWith(status: RecordingStatus.paused);
   }
@@ -126,7 +136,6 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
 
     _ticker?.cancel();
     final result = await _audioService.stopRecording();
-    _transcriptionSubscription?.cancel();
 
     state = state.copyWith(
       status: RecordingStatus.transcribing,
@@ -134,20 +143,54 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
       durationSeconds: result.durationSeconds,
       audioPath: result.path,
       transcript: '',
+      transcriptionError: null,
+      showApiKeyBanner: false,
     );
 
+    // Transcribe the audio file
     String transcript = '';
-    try {
-      transcript = await _sttService.transcribeFile(result.path);
-      debugPrint('RecordingNotifier.stopRecording: transcript="$transcript"');
-    } catch (_) {
-      transcript = '';
-      debugPrint('RecordingNotifier.stopRecording: transcription failed');
+    bool showApiKeyBanner = false;
+    String? transcriptionError;
+
+    final transcriptionServiceValue = _transcriptionService;
+    if (transcriptionServiceValue is AsyncData<TranscriptionService>) {
+      final transcriptionService = transcriptionServiceValue.value;
+      final transcriptionResult = await transcriptionService.transcribe(
+        result.path,
+      );
+
+      switch (transcriptionResult.status) {
+        case TranscriptionStatus.success:
+          transcript = transcriptionResult.text;
+          debugPrint(
+            'RecordingNotifier.stopRecording: transcript="${transcript.substring(0, 50)}..."',
+          );
+          break;
+        case TranscriptionStatus.noApiKey:
+          transcript = '';
+          showApiKeyBanner = true;
+          debugPrint('RecordingNotifier.stopRecording: no API key configured');
+          break;
+        case TranscriptionStatus.error:
+          transcript = '';
+          transcriptionError = transcriptionResult.errorMessage;
+          debugPrint(
+            'RecordingNotifier.stopRecording: error=$transcriptionError',
+          );
+          break;
+        case TranscriptionStatus.timeout:
+          transcript = '';
+          transcriptionError = transcriptionResult.errorMessage;
+          debugPrint('RecordingNotifier.stopRecording: timeout');
+          break;
+      }
     }
 
     state = state.copyWith(
       status: RecordingStatus.stopped,
       transcript: transcript,
+      transcriptionError: transcriptionError,
+      showApiKeyBanner: showApiKeyBanner,
     );
 
     return RecordingResult(
@@ -166,9 +209,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
       await _audioService.stopRecording();
     }
 
-    await _sttService.cancelRealtimeTranscription();
     _ticker?.cancel();
-    _transcriptionSubscription?.cancel();
     state = RecordingState.initial();
   }
 
@@ -186,7 +227,6 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
   @override
   void dispose() {
     _ticker?.cancel();
-    _transcriptionSubscription?.cancel();
     _amplitudeSubscription?.cancel();
     super.dispose();
   }

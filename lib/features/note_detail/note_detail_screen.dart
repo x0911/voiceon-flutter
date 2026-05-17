@@ -13,7 +13,8 @@ import '../../core/models/person.dart';
 import '../../core/repositories/note_repository.dart';
 import '../../core/repositories/people_repository.dart';
 import '../../core/services/audio_service.dart';
-import '../../core/services/stt_service.dart';
+import '../../core/services/transcription_service.dart';
+import '../../core/transcription/transcription_result.dart';
 import '../metadata/metadata_screen.dart';
 import 'note_detail_provider.dart';
 
@@ -206,26 +207,52 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
       _isTranscribing = true;
     });
 
-    final sttService = ref.read(sttServiceProvider);
-    final result = await sttService.transcribeFile(note.audioPath);
+    final transcriptionServiceFuture = ref.read(transcriptionServiceProvider);
+
+    if (transcriptionServiceFuture is! AsyncData<TranscriptionService>) {
+      if (!mounted) return;
+      setState(() {
+        _isTranscribing = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Transcription service unavailable.')),
+      );
+      return;
+    }
+
+    final transcriptionService = transcriptionServiceFuture.value;
+    final result = await transcriptionService.transcribe(note.audioPath);
 
     if (!mounted) return;
     setState(() {
       _isTranscribing = false;
     });
 
-    if (result.trim().isEmpty) {
+    if (result.status == TranscriptionStatus.success) {
+      if (result.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not transcribe audio.')),
+        );
+        return;
+      }
+      setState(() {
+        _contentController.text = result.text;
+        _showTranscript = true;
+        _isEditing = true;
+      });
+    } else if (result.status == TranscriptionStatus.noApiKey) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not transcribe audio.')),
+        const SnackBar(
+          content: Text(
+            'Set up AI transcription in Settings to re-transcribe.',
+          ),
+        ),
       );
-      return;
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Transcription failed: ${result.errorMessage}')),
+      );
     }
-
-    setState(() {
-      _contentController.text = result;
-      _showTranscript = true;
-      _isEditing = true;
-    });
   }
 
   String _formatDuration(Duration duration) {
