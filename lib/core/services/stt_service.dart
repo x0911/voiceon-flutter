@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -10,6 +11,8 @@ import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+const _sttAudioChannelName = 'voiceon/audio';
+
 final sttServiceProvider = Provider<SttService>((ref) {
   final service = SttService();
   ref.onDispose(service.dispose);
@@ -17,6 +20,7 @@ final sttServiceProvider = Provider<SttService>((ref) {
 });
 
 class SttService {
+  final MethodChannel _audioChannel = const MethodChannel(_sttAudioChannelName);
   final SpeechToText _speech = SpeechToText();
   final StreamController<String> _transcriptionController =
       StreamController.broadcast();
@@ -70,14 +74,15 @@ class SttService {
     }
 
     final locale = localeId ?? await getDefaultLocaleId();
+    await _muteBeep();
     await _speech.listen(
       onResult: _onResult,
       localeId: locale,
-      listenFor: const Duration(minutes: 5),
-      pauseFor: const Duration(seconds: 5),
+      listenFor: const Duration(seconds: 300),
+      pauseFor: const Duration(seconds: 10),
       listenOptions: SpeechListenOptions(
         partialResults: true,
-        cancelOnError: true,
+        cancelOnError: false,
         listenMode: ListenMode.dictation,
       ),
       onSoundLevelChange: _onSoundLevelChange,
@@ -120,14 +125,15 @@ class SttService {
     _lastRecognizedText = '';
 
     final locale = await getDefaultLocaleId();
+    await _muteBeep();
     await _speech.listen(
       onResult: _onResult,
       localeId: locale,
       listenFor: const Duration(minutes: 1),
-      pauseFor: const Duration(seconds: 3),
+      pauseFor: const Duration(seconds: 10),
       listenOptions: SpeechListenOptions(
         partialResults: true,
-        cancelOnError: true,
+        cancelOnError: false,
         listenMode: ListenMode.dictation,
       ),
       onSoundLevelChange: _onSoundLevelChange,
@@ -177,6 +183,16 @@ class SttService {
 
   void _onSoundLevelChange(double level) {
     // No-op for now; available for future waveform/tuning integration.
+  }
+
+  Future<void> _muteBeep() async {
+    try {
+      await _audioChannel.invokeMethod<void>('muteBeep');
+    } on PlatformException {
+      // Native mute not available on this platform.
+    } catch (_) {
+      // Ignore any other platform channel failures.
+    }
   }
 
   Future<void> dispose() async {

@@ -22,11 +22,12 @@ class AppTheme {
       appBarStyle: FlexAppBarStyle.primary,
       subThemesData: const FlexSubThemesData(inputDecoratorRadius: 16),
       useMaterial3: true,
-      fontFamily: GoogleFonts.dmSans().fontFamily,
+      fontFamily: GoogleFonts.openSans().fontFamily,
     ).toTheme;
 
     return base.copyWith(
-      textTheme: GoogleFonts.dmSansTextTheme(base.textTheme).copyWith(
+      chipTheme: base.chipTheme.copyWith(showCheckmark: false),
+      textTheme: GoogleFonts.openSansTextTheme(base.textTheme).copyWith(
         displayLarge: GoogleFonts.dmSerifDisplay(
           textStyle: base.textTheme.displayLarge,
         ),
@@ -38,10 +39,14 @@ class AppTheme {
         ),
       ),
       appBarTheme: base.appBarTheme.copyWith(
-        titleTextStyle: GoogleFonts.dmSerifDisplay(
-          textStyle: base.textTheme.headlineSmall?.copyWith(
-            color: base.colorScheme.onPrimary,
-          ),
+        titleTextStyle: GoogleFonts.openSans(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: base.colorScheme.onPrimary,
+        ),
+        toolbarTextStyle: GoogleFonts.openSans(
+          fontSize: 14,
+          color: base.colorScheme.onPrimary,
         ),
       ),
     );
@@ -61,11 +66,12 @@ class AppTheme {
       appBarStyle: FlexAppBarStyle.primary,
       subThemesData: const FlexSubThemesData(inputDecoratorRadius: 16),
       useMaterial3: true,
-      fontFamily: GoogleFonts.dmSans().fontFamily,
+      fontFamily: GoogleFonts.openSans().fontFamily,
     ).toTheme;
 
     return base.copyWith(
-      textTheme: GoogleFonts.dmSansTextTheme(base.textTheme).copyWith(
+      chipTheme: base.chipTheme.copyWith(showCheckmark: false),
+      textTheme: GoogleFonts.openSansTextTheme(base.textTheme).copyWith(
         displayLarge: GoogleFonts.dmSerifDisplay(
           textStyle: base.textTheme.displayLarge,
         ),
@@ -77,10 +83,14 @@ class AppTheme {
         ),
       ),
       appBarTheme: base.appBarTheme.copyWith(
-        titleTextStyle: GoogleFonts.dmSerifDisplay(
-          textStyle: base.textTheme.headlineSmall?.copyWith(
-            color: base.colorScheme.onPrimary,
-          ),
+        titleTextStyle: GoogleFonts.openSans(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: base.colorScheme.onPrimary,
+        ),
+        toolbarTextStyle: GoogleFonts.openSans(
+          fontSize: 14,
+          color: base.colorScheme.onPrimary,
         ),
       ),
     );

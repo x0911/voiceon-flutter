@@ -47,6 +47,10 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
 
   NoteModel? _note;
   Set<String> _selectedPersonIds = {};
+  NotePriority _editedPriority = NotePriority.low;
+  bool _editedIsTodo = false;
+  bool _editedIsCompleted = false;
+  DateTime? _editedDueDate;
 
   @override
   void initState() {
@@ -131,6 +135,10 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
     _descriptionController.text = note.description;
     _contentController.text = note.content;
     _selectedPersonIds = note.taggedPeople.map((person) => person.id).toSet();
+    _editedPriority = note.priority;
+    _editedIsTodo = note.isTodo;
+    _editedIsCompleted = note.isCompleted;
+    _editedDueDate = note.dueDate;
     if (!_isPreparingAudio) {
       _prepareAudio(note.audioPath);
     }
@@ -290,6 +298,10 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
                         setState(() {
                           _isEditing = true;
                           _showTranscript = true;
+                          _editedPriority = note.priority;
+                          _editedIsTodo = note.isTodo;
+                          _editedIsCompleted = note.isCompleted;
+                          _editedDueDate = note.dueDate;
                         });
                       },
               ),
@@ -619,11 +631,12 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
             ButtonSegment(value: NotePriority.medium, label: Text('Medium')),
             ButtonSegment(value: NotePriority.high, label: Text('High')),
           ],
-          selected: {_note?.priority ?? NotePriority.low},
+          showSelectedIcon: false,
+          selected: {_editedPriority},
           onSelectionChanged: (newSelection) {
             if (!mounted) return;
             setState(() {
-              _note = _note?.copyWith(priority: newSelection.first) ?? _note;
+              _editedPriority = newSelection.first;
             });
           },
         ),
@@ -635,13 +648,14 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
     return SwitchListTile(
       contentPadding: EdgeInsets.zero,
       title: const Text('Is Todo?'),
-      value: _note?.isTodo ?? false,
+      value: _editedIsTodo,
       onChanged: _isEditing
           ? (value) {
               setState(() {
-                _note = _note?.copyWith(isTodo: value);
+                _editedIsTodo = value;
                 if (!value) {
-                  _note = _note?.copyWith(isCompleted: false, dueDate: null);
+                  _editedIsCompleted = false;
+                  _editedDueDate = null;
                 }
               });
             }
@@ -653,11 +667,11 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
     return SwitchListTile(
       contentPadding: EdgeInsets.zero,
       title: const Text('Is Completed?'),
-      value: _note?.isCompleted ?? false,
+      value: _editedIsCompleted,
       onChanged: _isEditing
           ? (value) {
               setState(() {
-                _note = _note?.copyWith(isCompleted: value);
+                _editedIsCompleted = value;
               });
             }
           : null,
@@ -665,7 +679,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
   }
 
   Widget _buildDueDatePicker(BuildContext context) {
-    final dueDate = _note?.dueDate;
+    final dueDate = _editedDueDate;
     final label = dueDate == null
         ? 'Set due date'
         : 'Due ${dueDate.month}/${dueDate.day}/${dueDate.year}';
@@ -683,7 +697,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
             onPressed: _isEditing
                 ? () {
                     setState(() {
-                      _note = _note?.copyWith(dueDate: null);
+                      _editedDueDate = null;
                     });
                   }
                 : null,
@@ -692,7 +706,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
     );
   }
 
-  bool get _isTodo => _note?.isTodo ?? false;
+  bool get _isTodo => _editedIsTodo;
 
   Widget _buildPeopleSection(AsyncValue<List<PersonModel>> peopleAsync) {
     return Column(
@@ -808,10 +822,10 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
       label: _labelController.text.trim(),
       description: _descriptionController.text.trim(),
       content: _contentController.text.trim(),
-      priority: _note?.priority ?? note.priority,
-      isTodo: _note?.isTodo ?? note.isTodo,
-      isCompleted: _note?.isCompleted ?? note.isCompleted,
-      dueDate: _note?.dueDate,
+      priority: _editedPriority,
+      isTodo: _editedIsTodo,
+      isCompleted: _editedIsCompleted,
+      dueDate: _editedDueDate,
       updatedAt: now,
       taggedPeople: note.taggedPeople,
     );

@@ -1,16 +1,17 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/services/audio_service.dart';
 import '../../core/services/stt_service.dart';
 
-enum RecordingStatus { idle, recording, paused, stopped }
+enum RecordingStatus { idle, recording, paused, transcribing, stopped }
 
 class RecordingState {
   final RecordingStatus status;
   final Duration elapsed;
-  final String liveTranscript;
+  final String transcript;
   final String? audioPath;
   final int? durationSeconds;
   final double amplitude;
@@ -19,7 +20,7 @@ class RecordingState {
   const RecordingState({
     required this.status,
     required this.elapsed,
-    required this.liveTranscript,
+    required this.transcript,
     required this.audioPath,
     required this.durationSeconds,
     required this.amplitude,
@@ -30,7 +31,7 @@ class RecordingState {
     return const RecordingState(
       status: RecordingStatus.idle,
       elapsed: Duration.zero,
-      liveTranscript: '',
+      transcript: '',
       audioPath: null,
       durationSeconds: null,
       amplitude: 0,
@@ -41,7 +42,7 @@ class RecordingState {
   RecordingState copyWith({
     RecordingStatus? status,
     Duration? elapsed,
-    String? liveTranscript,
+    String? transcript,
     String? audioPath,
     int? durationSeconds,
     double? amplitude,
@@ -50,7 +51,7 @@ class RecordingState {
     return RecordingState(
       status: status ?? this.status,
       elapsed: elapsed ?? this.elapsed,
-      liveTranscript: liveTranscript ?? this.liveTranscript,
+      transcript: transcript ?? this.transcript,
       audioPath: audioPath ?? this.audioPath,
       durationSeconds: durationSeconds ?? this.durationSeconds,
       amplitude: amplitude ?? this.amplitude,
@@ -93,7 +94,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
       state = state.copyWith(
         status: RecordingStatus.recording,
         elapsed: Duration.zero,
-        liveTranscript: '',
+        transcript: '',
         audioPath: result.path,
         durationSeconds: null,
         errorMessage: null,
@@ -127,22 +128,26 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
     final result = await _audioService.stopRecording();
     _transcriptionSubscription?.cancel();
 
+    state = state.copyWith(
+      status: RecordingStatus.transcribing,
+      elapsed: Duration(seconds: result.durationSeconds),
+      durationSeconds: result.durationSeconds,
+      audioPath: result.path,
+      transcript: '',
+    );
+
     String transcript = '';
     try {
-      transcript = await _sttService.transcribeFile(
-        result.path,
-        playAudio: _audioService.playAudio,
-      );
+      transcript = await _sttService.transcribeFile(result.path);
+      debugPrint('RecordingNotifier.stopRecording: transcript="$transcript"');
     } catch (_) {
       transcript = '';
+      debugPrint('RecordingNotifier.stopRecording: transcription failed');
     }
 
     state = state.copyWith(
       status: RecordingStatus.stopped,
-      elapsed: Duration(seconds: result.durationSeconds),
-      durationSeconds: result.durationSeconds,
-      audioPath: result.path,
-      liveTranscript: transcript,
+      transcript: transcript,
     );
 
     return RecordingResult(

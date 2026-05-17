@@ -1,13 +1,10 @@
-import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/database/app_database.dart';
 import '../../core/models/note.dart';
 import '../../core/models/person.dart';
 import '../../core/repositories/note_repository.dart';
-import '../../core/services/audio_service.dart';
 import 'home_state.dart';
 import 'note_card.dart';
 
@@ -26,7 +23,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final filters = ref.watch(homeFilterProvider);
     final filterNotifier = ref.read(homeFilterProvider.notifier);
     final noteRepository = ref.watch(noteRepositoryProvider);
-    final audioService = ref.watch(audioServiceProvider);
 
     ref.listen<AsyncValue<List<NoteModel>>>(homeNotesProvider, (
       previous,
@@ -50,52 +46,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     });
 
-    NotesCompanion noteToCompanion(NoteModel note) {
-      return NotesCompanion(
-        id: drift.Value(note.id),
-        label: drift.Value(note.label),
-        description: drift.Value(note.description),
-        content: drift.Value(note.content),
-        priority: drift.Value(note.priority.value),
-        isTodo: drift.Value(note.isTodo),
-        isCompleted: drift.Value(note.isCompleted),
-        dueDate: drift.Value(note.dueDate),
-        audioPath: drift.Value(note.audioPath),
-        audioDurationSeconds: drift.Value(note.audioDurationSeconds),
-        createdAt: drift.Value(note.createdAt),
-        updatedAt: drift.Value(note.updatedAt),
-      );
-    }
-
-    Future<void> deleteNote(NoteModel note) async {
-      try {
-        await noteRepository.deleteNote(note.id);
-        await audioService.deleteAudio(note.audioPath);
-
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Note deleted'),
-            action: SnackBarAction(
-              label: 'Undo',
-              onPressed: () async {
-                await noteRepository.saveNoteWithPeople(
-                  noteToCompanion(note),
-                  note.taggedPeople.map((person) => person.id).toList(),
-                );
-              },
-            ),
-          ),
-        );
-      } catch (_) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Could not delete note.')));
-      }
-    }
-
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -103,14 +53,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             pinned: true,
             floating: false,
             snap: false,
-            expandedHeight: 100,
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                'Voiceon',
-                style: Theme.of(context).textTheme.displaySmall,
-              ),
-              centerTitle: true,
-            ),
+            title: const Text('Voiceon'),
             actions: [
               IconButton(
                 icon: const Icon(Icons.settings_outlined),
@@ -133,11 +76,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 children: [
                   TextField(
                     decoration: const InputDecoration(
-                      hintText: 'Search notes, description, or transcript',
+                      hintText: 'Search notes...',
                       prefixIcon: Icon(Icons.search),
                       border: OutlineInputBorder(),
                     ),
                     onChanged: filterNotifier.updateSearchText,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, left: 12),
+                    child: Text(
+                      'Searches label, description and transcript',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withAlpha((0.5 * 255).round()),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   _FilterSection(
@@ -146,8 +100,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       return FilterChip(
                         label: Text(priority.name.toUpperCase()),
                         selected: filters.priorities.contains(priority),
+                        showCheckmark: false,
                         selectedColor: Theme.of(context).colorScheme.primary,
-                        checkmarkColor: Colors.white,
                         labelStyle: TextStyle(
                           color: filters.priorities.contains(priority)
                               ? Colors.white
@@ -257,10 +211,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           return FilterChip(
                             label: Text(person.name),
                             selected: selected,
+                            showCheckmark: false,
                             selectedColor: Theme.of(
                               context,
                             ).colorScheme.primary,
-                            checkmarkColor: Colors.white,
                             labelStyle: TextStyle(
                               color: selected
                                   ? Colors.white
@@ -329,33 +283,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               return SliverList(
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final note = notes[index];
-                  return Dismissible(
-                    key: ValueKey(note.id),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      margin: const EdgeInsets.symmetric(
-                        vertical: 8,
-                        horizontal: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 20),
-                      child: const Icon(Icons.delete, color: Colors.white),
-                    ),
-                    onDismissed: (_) => deleteNote(note),
-                    child: NoteCard(
-                      note: note,
-                      onToggleCompleted: note.isTodo
-                          ? (value) => noteRepository.toggleNoteCompletion(
-                              note.id,
-                              value,
-                            )
-                          : null,
-                      onTap: () => context.push('/note/${note.id}'),
-                    ),
+                  return NoteCard(
+                    note: note,
+                    onToggleCompleted: note.isTodo
+                        ? (value) => noteRepository.toggleNoteCompletion(
+                            note.id,
+                            value,
+                          )
+                        : null,
+                    onTap: () => context.push('/note/${note.id}'),
                   );
                 }, childCount: notes.length),
               );

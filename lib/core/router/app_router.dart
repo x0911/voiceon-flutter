@@ -26,13 +26,20 @@ final appRouter = GoRouter(
       name: 'metadata',
       builder: (context, state) {
         final extra = state.extra;
+        debugPrint('app_router: Metadata route extra=$extra');
         if (extra is RecordingEditContext) {
+          debugPrint(
+            'app_router: Metadata route received RecordingEditContext with transcript="${extra.recordingResult.transcript}"',
+          );
           return MetadataScreen(
             recordingResult: extra.recordingResult,
             editingNoteId: extra.noteId,
           );
         }
         if (extra is RecordingResult) {
+          debugPrint(
+            'app_router: Metadata route received RecordingResult with transcript="${extra.transcript}"',
+          );
           return MetadataScreen(recordingResult: extra);
         }
 

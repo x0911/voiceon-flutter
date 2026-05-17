@@ -177,6 +177,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     final state = ref.watch(recordingStateProvider);
     final notifier = ref.read(recordingStateProvider.notifier);
 
+    final isTranscribing = state.status == RecordingStatus.transcribing;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Recording'),
@@ -212,49 +214,77 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 16),
-            _buildWaveform(context, state),
-            if (state.isRecording) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainerHighest.withAlpha(30),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  'Recording will continue if the app goes to the background.',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
-                  textAlign: TextAlign.center,
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 16),
+                _buildWaveform(context, state),
+                if (state.isRecording) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest.withAlpha(30),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      'Recording will continue if the app goes to the background.',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                _buildTimer(context, state),
+                const SizedBox(height: 20),
+                _buildTranscriptCard(state),
+                const SizedBox(height: 24),
+                if (state.errorMessage != null)
+                  Text(
+                    state.errorMessage!,
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                const Spacer(),
+                _buildControls(context, state, notifier),
+              ],
+            ),
+          ),
+          if (isTranscribing)
+            Container(
+              color: Theme.of(
+                context,
+              ).colorScheme.surface.withAlpha((0.85 * 255).round()),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.mic, size: 68, color: Color(0xFF009688)),
+                    const SizedBox(height: 20),
+                    const CircularProgressIndicator(color: Color(0xFF009688)),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Transcribing your note...',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontFamily: 'Open Sans',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-            const SizedBox(height: 20),
-            _buildTimer(context, state),
-            const SizedBox(height: 20),
-            _buildTranscriptCard(state),
-            const SizedBox(height: 24),
-            if (state.errorMessage != null)
-              Text(
-                state.errorMessage!,
-                style: const TextStyle(color: Colors.redAccent),
-              ),
-            const Spacer(),
-            _buildControls(context, state, notifier),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -324,10 +354,6 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   }
 
   Widget _buildTranscriptCard(RecordingState state) {
-    final transcript = state.liveTranscript.isEmpty
-        ? 'Live transcription will appear here while you record.'
-        : state.liveTranscript;
-
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -335,14 +361,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
           color: const Color.fromRGBO(0, 0, 0, 0.04),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: SingleChildScrollView(
+        child: Center(
           child: Text(
-            transcript,
-            style: TextStyle(
-              color: state.liveTranscript.isEmpty
-                  ? Colors.grey[600]
-                  : Colors.black,
-            ),
+            'Transcription will appear after you stop recording.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+            textAlign: TextAlign.center,
           ),
         ),
       ),
@@ -355,6 +380,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     RecordingNotifier notifier,
   ) {
     final isActive = state.isRecording || state.isPaused;
+    final isTranscribing = state.status == RecordingStatus.transcribing;
     final mainButtonLabel = state.isRecording
         ? 'Pause'
         : state.isPaused
@@ -365,15 +391,19 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         FilledButton(
-          onPressed: () async {
-            await _handleMainAction(state, notifier);
-          },
+          onPressed: isTranscribing
+              ? null
+              : () async {
+                  await _handleMainAction(state, notifier);
+                },
           child: Text(mainButtonLabel),
         ),
         const SizedBox(height: 12),
         if (isActive)
           FilledButton.tonal(
-            onPressed: () async => _stopRecording(notifier),
+            onPressed: isTranscribing
+                ? null
+                : () async => _stopRecording(notifier),
             child: const Text('Stop & continue'),
           ),
       ],

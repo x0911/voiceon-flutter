@@ -65,6 +65,22 @@ class _MetadataScreenState extends ConsumerState<MetadataScreen> {
     } else if (widget.recordingResult.transcript.isNotEmpty) {
       _contentController.text = widget.recordingResult.transcript;
       _showContentEditor = true;
+      debugPrint(
+        'MetadataScreen.initState: content initialized with transcript="${widget.recordingResult.transcript}"',
+      );
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Transcription unavailable — you can type it manually.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      });
+      debugPrint('MetadataScreen.initState: no transcript available');
     }
   }
 
@@ -260,6 +276,7 @@ class _MetadataScreenState extends ConsumerState<MetadataScreen> {
             ButtonSegment(value: NotePriority.medium, label: Text('Medium')),
             ButtonSegment(value: NotePriority.high, label: Text('High')),
           ],
+          showSelectedIcon: false,
           selected: {_priority},
           onSelectionChanged: (newSelection) {
             setState(() {
