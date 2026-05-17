@@ -1186,15 +1186,1119 @@ class NotePeopleCompanion extends UpdateCompanion<NotePeopleData> {
   }
 }
 
+class $CallsTableTable extends CallsTable
+    with TableInfo<$CallsTableTable, CallsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CallsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _phoneNumberMeta = const VerificationMeta(
+    'phoneNumber',
+  );
+  @override
+  late final GeneratedColumn<String> phoneNumber = GeneratedColumn<String>(
+    'phone_number',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contactNameMeta = const VerificationMeta(
+    'contactName',
+  );
+  @override
+  late final GeneratedColumn<String> contactName = GeneratedColumn<String>(
+    'contact_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _directionMeta = const VerificationMeta(
+    'direction',
+  );
+  @override
+  late final GeneratedColumn<String> direction = GeneratedColumn<String>(
+    'direction',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startedAtMeta = const VerificationMeta(
+    'startedAt',
+  );
+  @override
+  late final GeneratedColumn<int> startedAt = GeneratedColumn<int>(
+    'started_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endedAtMeta = const VerificationMeta(
+    'endedAt',
+  );
+  @override
+  late final GeneratedColumn<int> endedAt = GeneratedColumn<int>(
+    'ended_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _durationSecondsMeta = const VerificationMeta(
+    'durationSeconds',
+  );
+  @override
+  late final GeneratedColumn<int> durationSeconds = GeneratedColumn<int>(
+    'duration_seconds',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _audioPathMeta = const VerificationMeta(
+    'audioPath',
+  );
+  @override
+  late final GeneratedColumn<String> audioPath = GeneratedColumn<String>(
+    'audio_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _transcriptionStatusMeta =
+      const VerificationMeta('transcriptionStatus');
+  @override
+  late final GeneratedColumn<String> transcriptionStatus =
+      GeneratedColumn<String>(
+        'transcription_status',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('pending'),
+      );
+  static const VerificationMeta _rawTranscriptMeta = const VerificationMeta(
+    'rawTranscript',
+  );
+  @override
+  late final GeneratedColumn<String> rawTranscript = GeneratedColumn<String>(
+    'raw_transcript',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    phoneNumber,
+    contactName,
+    direction,
+    startedAt,
+    endedAt,
+    durationSeconds,
+    audioPath,
+    transcriptionStatus,
+    rawTranscript,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'calls_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CallsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('phone_number')) {
+      context.handle(
+        _phoneNumberMeta,
+        phoneNumber.isAcceptableOrUnknown(
+          data['phone_number']!,
+          _phoneNumberMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_phoneNumberMeta);
+    }
+    if (data.containsKey('contact_name')) {
+      context.handle(
+        _contactNameMeta,
+        contactName.isAcceptableOrUnknown(
+          data['contact_name']!,
+          _contactNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('direction')) {
+      context.handle(
+        _directionMeta,
+        direction.isAcceptableOrUnknown(data['direction']!, _directionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_directionMeta);
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(
+        _startedAtMeta,
+        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startedAtMeta);
+    }
+    if (data.containsKey('ended_at')) {
+      context.handle(
+        _endedAtMeta,
+        endedAt.isAcceptableOrUnknown(data['ended_at']!, _endedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_endedAtMeta);
+    }
+    if (data.containsKey('duration_seconds')) {
+      context.handle(
+        _durationSecondsMeta,
+        durationSeconds.isAcceptableOrUnknown(
+          data['duration_seconds']!,
+          _durationSecondsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_durationSecondsMeta);
+    }
+    if (data.containsKey('audio_path')) {
+      context.handle(
+        _audioPathMeta,
+        audioPath.isAcceptableOrUnknown(data['audio_path']!, _audioPathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_audioPathMeta);
+    }
+    if (data.containsKey('transcription_status')) {
+      context.handle(
+        _transcriptionStatusMeta,
+        transcriptionStatus.isAcceptableOrUnknown(
+          data['transcription_status']!,
+          _transcriptionStatusMeta,
+        ),
+      );
+    }
+    if (data.containsKey('raw_transcript')) {
+      context.handle(
+        _rawTranscriptMeta,
+        rawTranscript.isAcceptableOrUnknown(
+          data['raw_transcript']!,
+          _rawTranscriptMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CallsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CallsTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      phoneNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone_number'],
+      )!,
+      contactName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}contact_name'],
+      )!,
+      direction: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}direction'],
+      )!,
+      startedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}started_at'],
+      )!,
+      endedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}ended_at'],
+      )!,
+      durationSeconds: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}duration_seconds'],
+      )!,
+      audioPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}audio_path'],
+      )!,
+      transcriptionStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}transcription_status'],
+      )!,
+      rawTranscript: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}raw_transcript'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CallsTableTable createAlias(String alias) {
+    return $CallsTableTable(attachedDatabase, alias);
+  }
+}
+
+class CallsTableData extends DataClass implements Insertable<CallsTableData> {
+  final String id;
+  final String phoneNumber;
+  final String contactName;
+  final String direction;
+  final int startedAt;
+  final int endedAt;
+  final int durationSeconds;
+  final String audioPath;
+  final String transcriptionStatus;
+  final String rawTranscript;
+  final int createdAt;
+  const CallsTableData({
+    required this.id,
+    required this.phoneNumber,
+    required this.contactName,
+    required this.direction,
+    required this.startedAt,
+    required this.endedAt,
+    required this.durationSeconds,
+    required this.audioPath,
+    required this.transcriptionStatus,
+    required this.rawTranscript,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['phone_number'] = Variable<String>(phoneNumber);
+    map['contact_name'] = Variable<String>(contactName);
+    map['direction'] = Variable<String>(direction);
+    map['started_at'] = Variable<int>(startedAt);
+    map['ended_at'] = Variable<int>(endedAt);
+    map['duration_seconds'] = Variable<int>(durationSeconds);
+    map['audio_path'] = Variable<String>(audioPath);
+    map['transcription_status'] = Variable<String>(transcriptionStatus);
+    map['raw_transcript'] = Variable<String>(rawTranscript);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  CallsTableCompanion toCompanion(bool nullToAbsent) {
+    return CallsTableCompanion(
+      id: Value(id),
+      phoneNumber: Value(phoneNumber),
+      contactName: Value(contactName),
+      direction: Value(direction),
+      startedAt: Value(startedAt),
+      endedAt: Value(endedAt),
+      durationSeconds: Value(durationSeconds),
+      audioPath: Value(audioPath),
+      transcriptionStatus: Value(transcriptionStatus),
+      rawTranscript: Value(rawTranscript),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory CallsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CallsTableData(
+      id: serializer.fromJson<String>(json['id']),
+      phoneNumber: serializer.fromJson<String>(json['phoneNumber']),
+      contactName: serializer.fromJson<String>(json['contactName']),
+      direction: serializer.fromJson<String>(json['direction']),
+      startedAt: serializer.fromJson<int>(json['startedAt']),
+      endedAt: serializer.fromJson<int>(json['endedAt']),
+      durationSeconds: serializer.fromJson<int>(json['durationSeconds']),
+      audioPath: serializer.fromJson<String>(json['audioPath']),
+      transcriptionStatus: serializer.fromJson<String>(
+        json['transcriptionStatus'],
+      ),
+      rawTranscript: serializer.fromJson<String>(json['rawTranscript']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'phoneNumber': serializer.toJson<String>(phoneNumber),
+      'contactName': serializer.toJson<String>(contactName),
+      'direction': serializer.toJson<String>(direction),
+      'startedAt': serializer.toJson<int>(startedAt),
+      'endedAt': serializer.toJson<int>(endedAt),
+      'durationSeconds': serializer.toJson<int>(durationSeconds),
+      'audioPath': serializer.toJson<String>(audioPath),
+      'transcriptionStatus': serializer.toJson<String>(transcriptionStatus),
+      'rawTranscript': serializer.toJson<String>(rawTranscript),
+      'createdAt': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  CallsTableData copyWith({
+    String? id,
+    String? phoneNumber,
+    String? contactName,
+    String? direction,
+    int? startedAt,
+    int? endedAt,
+    int? durationSeconds,
+    String? audioPath,
+    String? transcriptionStatus,
+    String? rawTranscript,
+    int? createdAt,
+  }) => CallsTableData(
+    id: id ?? this.id,
+    phoneNumber: phoneNumber ?? this.phoneNumber,
+    contactName: contactName ?? this.contactName,
+    direction: direction ?? this.direction,
+    startedAt: startedAt ?? this.startedAt,
+    endedAt: endedAt ?? this.endedAt,
+    durationSeconds: durationSeconds ?? this.durationSeconds,
+    audioPath: audioPath ?? this.audioPath,
+    transcriptionStatus: transcriptionStatus ?? this.transcriptionStatus,
+    rawTranscript: rawTranscript ?? this.rawTranscript,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  CallsTableData copyWithCompanion(CallsTableCompanion data) {
+    return CallsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      phoneNumber: data.phoneNumber.present
+          ? data.phoneNumber.value
+          : this.phoneNumber,
+      contactName: data.contactName.present
+          ? data.contactName.value
+          : this.contactName,
+      direction: data.direction.present ? data.direction.value : this.direction,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      endedAt: data.endedAt.present ? data.endedAt.value : this.endedAt,
+      durationSeconds: data.durationSeconds.present
+          ? data.durationSeconds.value
+          : this.durationSeconds,
+      audioPath: data.audioPath.present ? data.audioPath.value : this.audioPath,
+      transcriptionStatus: data.transcriptionStatus.present
+          ? data.transcriptionStatus.value
+          : this.transcriptionStatus,
+      rawTranscript: data.rawTranscript.present
+          ? data.rawTranscript.value
+          : this.rawTranscript,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CallsTableData(')
+          ..write('id: $id, ')
+          ..write('phoneNumber: $phoneNumber, ')
+          ..write('contactName: $contactName, ')
+          ..write('direction: $direction, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('endedAt: $endedAt, ')
+          ..write('durationSeconds: $durationSeconds, ')
+          ..write('audioPath: $audioPath, ')
+          ..write('transcriptionStatus: $transcriptionStatus, ')
+          ..write('rawTranscript: $rawTranscript, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    phoneNumber,
+    contactName,
+    direction,
+    startedAt,
+    endedAt,
+    durationSeconds,
+    audioPath,
+    transcriptionStatus,
+    rawTranscript,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CallsTableData &&
+          other.id == this.id &&
+          other.phoneNumber == this.phoneNumber &&
+          other.contactName == this.contactName &&
+          other.direction == this.direction &&
+          other.startedAt == this.startedAt &&
+          other.endedAt == this.endedAt &&
+          other.durationSeconds == this.durationSeconds &&
+          other.audioPath == this.audioPath &&
+          other.transcriptionStatus == this.transcriptionStatus &&
+          other.rawTranscript == this.rawTranscript &&
+          other.createdAt == this.createdAt);
+}
+
+class CallsTableCompanion extends UpdateCompanion<CallsTableData> {
+  final Value<String> id;
+  final Value<String> phoneNumber;
+  final Value<String> contactName;
+  final Value<String> direction;
+  final Value<int> startedAt;
+  final Value<int> endedAt;
+  final Value<int> durationSeconds;
+  final Value<String> audioPath;
+  final Value<String> transcriptionStatus;
+  final Value<String> rawTranscript;
+  final Value<int> createdAt;
+  final Value<int> rowid;
+  const CallsTableCompanion({
+    this.id = const Value.absent(),
+    this.phoneNumber = const Value.absent(),
+    this.contactName = const Value.absent(),
+    this.direction = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.endedAt = const Value.absent(),
+    this.durationSeconds = const Value.absent(),
+    this.audioPath = const Value.absent(),
+    this.transcriptionStatus = const Value.absent(),
+    this.rawTranscript = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CallsTableCompanion.insert({
+    required String id,
+    required String phoneNumber,
+    this.contactName = const Value.absent(),
+    required String direction,
+    required int startedAt,
+    required int endedAt,
+    required int durationSeconds,
+    required String audioPath,
+    this.transcriptionStatus = const Value.absent(),
+    this.rawTranscript = const Value.absent(),
+    required int createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       phoneNumber = Value(phoneNumber),
+       direction = Value(direction),
+       startedAt = Value(startedAt),
+       endedAt = Value(endedAt),
+       durationSeconds = Value(durationSeconds),
+       audioPath = Value(audioPath),
+       createdAt = Value(createdAt);
+  static Insertable<CallsTableData> custom({
+    Expression<String>? id,
+    Expression<String>? phoneNumber,
+    Expression<String>? contactName,
+    Expression<String>? direction,
+    Expression<int>? startedAt,
+    Expression<int>? endedAt,
+    Expression<int>? durationSeconds,
+    Expression<String>? audioPath,
+    Expression<String>? transcriptionStatus,
+    Expression<String>? rawTranscript,
+    Expression<int>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (phoneNumber != null) 'phone_number': phoneNumber,
+      if (contactName != null) 'contact_name': contactName,
+      if (direction != null) 'direction': direction,
+      if (startedAt != null) 'started_at': startedAt,
+      if (endedAt != null) 'ended_at': endedAt,
+      if (durationSeconds != null) 'duration_seconds': durationSeconds,
+      if (audioPath != null) 'audio_path': audioPath,
+      if (transcriptionStatus != null)
+        'transcription_status': transcriptionStatus,
+      if (rawTranscript != null) 'raw_transcript': rawTranscript,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CallsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? phoneNumber,
+    Value<String>? contactName,
+    Value<String>? direction,
+    Value<int>? startedAt,
+    Value<int>? endedAt,
+    Value<int>? durationSeconds,
+    Value<String>? audioPath,
+    Value<String>? transcriptionStatus,
+    Value<String>? rawTranscript,
+    Value<int>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return CallsTableCompanion(
+      id: id ?? this.id,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      contactName: contactName ?? this.contactName,
+      direction: direction ?? this.direction,
+      startedAt: startedAt ?? this.startedAt,
+      endedAt: endedAt ?? this.endedAt,
+      durationSeconds: durationSeconds ?? this.durationSeconds,
+      audioPath: audioPath ?? this.audioPath,
+      transcriptionStatus: transcriptionStatus ?? this.transcriptionStatus,
+      rawTranscript: rawTranscript ?? this.rawTranscript,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (phoneNumber.present) {
+      map['phone_number'] = Variable<String>(phoneNumber.value);
+    }
+    if (contactName.present) {
+      map['contact_name'] = Variable<String>(contactName.value);
+    }
+    if (direction.present) {
+      map['direction'] = Variable<String>(direction.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<int>(startedAt.value);
+    }
+    if (endedAt.present) {
+      map['ended_at'] = Variable<int>(endedAt.value);
+    }
+    if (durationSeconds.present) {
+      map['duration_seconds'] = Variable<int>(durationSeconds.value);
+    }
+    if (audioPath.present) {
+      map['audio_path'] = Variable<String>(audioPath.value);
+    }
+    if (transcriptionStatus.present) {
+      map['transcription_status'] = Variable<String>(transcriptionStatus.value);
+    }
+    if (rawTranscript.present) {
+      map['raw_transcript'] = Variable<String>(rawTranscript.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CallsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('phoneNumber: $phoneNumber, ')
+          ..write('contactName: $contactName, ')
+          ..write('direction: $direction, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('endedAt: $endedAt, ')
+          ..write('durationSeconds: $durationSeconds, ')
+          ..write('audioPath: $audioPath, ')
+          ..write('transcriptionStatus: $transcriptionStatus, ')
+          ..write('rawTranscript: $rawTranscript, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CallUtterancesTableTable extends CallUtterancesTable
+    with TableInfo<$CallUtterancesTableTable, CallUtterancesTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CallUtterancesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _callIdMeta = const VerificationMeta('callId');
+  @override
+  late final GeneratedColumn<String> callId = GeneratedColumn<String>(
+    'call_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES calls_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _speakerMeta = const VerificationMeta(
+    'speaker',
+  );
+  @override
+  late final GeneratedColumn<String> speaker = GeneratedColumn<String>(
+    'speaker',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _utteranceTextMeta = const VerificationMeta(
+    'utteranceText',
+  );
+  @override
+  late final GeneratedColumn<String> utteranceText = GeneratedColumn<String>(
+    'utterance_text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startMsMeta = const VerificationMeta(
+    'startMs',
+  );
+  @override
+  late final GeneratedColumn<int> startMs = GeneratedColumn<int>(
+    'start_ms',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sequenceMeta = const VerificationMeta(
+    'sequence',
+  );
+  @override
+  late final GeneratedColumn<int> sequence = GeneratedColumn<int>(
+    'sequence',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    callId,
+    speaker,
+    utteranceText,
+    startMs,
+    sequence,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'call_utterances_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CallUtterancesTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('call_id')) {
+      context.handle(
+        _callIdMeta,
+        callId.isAcceptableOrUnknown(data['call_id']!, _callIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_callIdMeta);
+    }
+    if (data.containsKey('speaker')) {
+      context.handle(
+        _speakerMeta,
+        speaker.isAcceptableOrUnknown(data['speaker']!, _speakerMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_speakerMeta);
+    }
+    if (data.containsKey('utterance_text')) {
+      context.handle(
+        _utteranceTextMeta,
+        utteranceText.isAcceptableOrUnknown(
+          data['utterance_text']!,
+          _utteranceTextMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_utteranceTextMeta);
+    }
+    if (data.containsKey('start_ms')) {
+      context.handle(
+        _startMsMeta,
+        startMs.isAcceptableOrUnknown(data['start_ms']!, _startMsMeta),
+      );
+    }
+    if (data.containsKey('sequence')) {
+      context.handle(
+        _sequenceMeta,
+        sequence.isAcceptableOrUnknown(data['sequence']!, _sequenceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sequenceMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CallUtterancesTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CallUtterancesTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      callId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}call_id'],
+      )!,
+      speaker: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}speaker'],
+      )!,
+      utteranceText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}utterance_text'],
+      )!,
+      startMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}start_ms'],
+      ),
+      sequence: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sequence'],
+      )!,
+    );
+  }
+
+  @override
+  $CallUtterancesTableTable createAlias(String alias) {
+    return $CallUtterancesTableTable(attachedDatabase, alias);
+  }
+}
+
+class CallUtterancesTableData extends DataClass
+    implements Insertable<CallUtterancesTableData> {
+  final String id;
+  final String callId;
+  final String speaker;
+  final String utteranceText;
+  final int? startMs;
+  final int sequence;
+  const CallUtterancesTableData({
+    required this.id,
+    required this.callId,
+    required this.speaker,
+    required this.utteranceText,
+    this.startMs,
+    required this.sequence,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['call_id'] = Variable<String>(callId);
+    map['speaker'] = Variable<String>(speaker);
+    map['utterance_text'] = Variable<String>(utteranceText);
+    if (!nullToAbsent || startMs != null) {
+      map['start_ms'] = Variable<int>(startMs);
+    }
+    map['sequence'] = Variable<int>(sequence);
+    return map;
+  }
+
+  CallUtterancesTableCompanion toCompanion(bool nullToAbsent) {
+    return CallUtterancesTableCompanion(
+      id: Value(id),
+      callId: Value(callId),
+      speaker: Value(speaker),
+      utteranceText: Value(utteranceText),
+      startMs: startMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startMs),
+      sequence: Value(sequence),
+    );
+  }
+
+  factory CallUtterancesTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CallUtterancesTableData(
+      id: serializer.fromJson<String>(json['id']),
+      callId: serializer.fromJson<String>(json['callId']),
+      speaker: serializer.fromJson<String>(json['speaker']),
+      utteranceText: serializer.fromJson<String>(json['utteranceText']),
+      startMs: serializer.fromJson<int?>(json['startMs']),
+      sequence: serializer.fromJson<int>(json['sequence']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'callId': serializer.toJson<String>(callId),
+      'speaker': serializer.toJson<String>(speaker),
+      'utteranceText': serializer.toJson<String>(utteranceText),
+      'startMs': serializer.toJson<int?>(startMs),
+      'sequence': serializer.toJson<int>(sequence),
+    };
+  }
+
+  CallUtterancesTableData copyWith({
+    String? id,
+    String? callId,
+    String? speaker,
+    String? utteranceText,
+    Value<int?> startMs = const Value.absent(),
+    int? sequence,
+  }) => CallUtterancesTableData(
+    id: id ?? this.id,
+    callId: callId ?? this.callId,
+    speaker: speaker ?? this.speaker,
+    utteranceText: utteranceText ?? this.utteranceText,
+    startMs: startMs.present ? startMs.value : this.startMs,
+    sequence: sequence ?? this.sequence,
+  );
+  CallUtterancesTableData copyWithCompanion(CallUtterancesTableCompanion data) {
+    return CallUtterancesTableData(
+      id: data.id.present ? data.id.value : this.id,
+      callId: data.callId.present ? data.callId.value : this.callId,
+      speaker: data.speaker.present ? data.speaker.value : this.speaker,
+      utteranceText: data.utteranceText.present
+          ? data.utteranceText.value
+          : this.utteranceText,
+      startMs: data.startMs.present ? data.startMs.value : this.startMs,
+      sequence: data.sequence.present ? data.sequence.value : this.sequence,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CallUtterancesTableData(')
+          ..write('id: $id, ')
+          ..write('callId: $callId, ')
+          ..write('speaker: $speaker, ')
+          ..write('utteranceText: $utteranceText, ')
+          ..write('startMs: $startMs, ')
+          ..write('sequence: $sequence')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, callId, speaker, utteranceText, startMs, sequence);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CallUtterancesTableData &&
+          other.id == this.id &&
+          other.callId == this.callId &&
+          other.speaker == this.speaker &&
+          other.utteranceText == this.utteranceText &&
+          other.startMs == this.startMs &&
+          other.sequence == this.sequence);
+}
+
+class CallUtterancesTableCompanion
+    extends UpdateCompanion<CallUtterancesTableData> {
+  final Value<String> id;
+  final Value<String> callId;
+  final Value<String> speaker;
+  final Value<String> utteranceText;
+  final Value<int?> startMs;
+  final Value<int> sequence;
+  final Value<int> rowid;
+  const CallUtterancesTableCompanion({
+    this.id = const Value.absent(),
+    this.callId = const Value.absent(),
+    this.speaker = const Value.absent(),
+    this.utteranceText = const Value.absent(),
+    this.startMs = const Value.absent(),
+    this.sequence = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CallUtterancesTableCompanion.insert({
+    required String id,
+    required String callId,
+    required String speaker,
+    required String utteranceText,
+    this.startMs = const Value.absent(),
+    required int sequence,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       callId = Value(callId),
+       speaker = Value(speaker),
+       utteranceText = Value(utteranceText),
+       sequence = Value(sequence);
+  static Insertable<CallUtterancesTableData> custom({
+    Expression<String>? id,
+    Expression<String>? callId,
+    Expression<String>? speaker,
+    Expression<String>? utteranceText,
+    Expression<int>? startMs,
+    Expression<int>? sequence,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (callId != null) 'call_id': callId,
+      if (speaker != null) 'speaker': speaker,
+      if (utteranceText != null) 'utterance_text': utteranceText,
+      if (startMs != null) 'start_ms': startMs,
+      if (sequence != null) 'sequence': sequence,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CallUtterancesTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? callId,
+    Value<String>? speaker,
+    Value<String>? utteranceText,
+    Value<int?>? startMs,
+    Value<int>? sequence,
+    Value<int>? rowid,
+  }) {
+    return CallUtterancesTableCompanion(
+      id: id ?? this.id,
+      callId: callId ?? this.callId,
+      speaker: speaker ?? this.speaker,
+      utteranceText: utteranceText ?? this.utteranceText,
+      startMs: startMs ?? this.startMs,
+      sequence: sequence ?? this.sequence,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (callId.present) {
+      map['call_id'] = Variable<String>(callId.value);
+    }
+    if (speaker.present) {
+      map['speaker'] = Variable<String>(speaker.value);
+    }
+    if (utteranceText.present) {
+      map['utterance_text'] = Variable<String>(utteranceText.value);
+    }
+    if (startMs.present) {
+      map['start_ms'] = Variable<int>(startMs.value);
+    }
+    if (sequence.present) {
+      map['sequence'] = Variable<int>(sequence.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CallUtterancesTableCompanion(')
+          ..write('id: $id, ')
+          ..write('callId: $callId, ')
+          ..write('speaker: $speaker, ')
+          ..write('utteranceText: $utteranceText, ')
+          ..write('startMs: $startMs, ')
+          ..write('sequence: $sequence, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $NotesTable notes = $NotesTable(this);
   late final $PeopleTable people = $PeopleTable(this);
   late final $NotePeopleTable notePeople = $NotePeopleTable(this);
+  late final $CallsTableTable callsTable = $CallsTableTable(this);
+  late final $CallUtterancesTableTable callUtterancesTable =
+      $CallUtterancesTableTable(this);
   late final NotesDao notesDao = NotesDao(this as AppDatabase);
   late final PeopleDao peopleDao = PeopleDao(this as AppDatabase);
   late final NotePeopleDao notePeopleDao = NotePeopleDao(this as AppDatabase);
+  late final CallsDao callsDao = CallsDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1203,6 +2307,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     notes,
     people,
     notePeople,
+    callsTable,
+    callUtterancesTable,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -1219,6 +2325,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('note_people', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'calls_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('call_utterances_table', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -2261,6 +3374,802 @@ typedef $$NotePeopleTableProcessedTableManager =
       NotePeopleData,
       PrefetchHooks Function({bool noteId, bool personId})
     >;
+typedef $$CallsTableTableCreateCompanionBuilder =
+    CallsTableCompanion Function({
+      required String id,
+      required String phoneNumber,
+      Value<String> contactName,
+      required String direction,
+      required int startedAt,
+      required int endedAt,
+      required int durationSeconds,
+      required String audioPath,
+      Value<String> transcriptionStatus,
+      Value<String> rawTranscript,
+      required int createdAt,
+      Value<int> rowid,
+    });
+typedef $$CallsTableTableUpdateCompanionBuilder =
+    CallsTableCompanion Function({
+      Value<String> id,
+      Value<String> phoneNumber,
+      Value<String> contactName,
+      Value<String> direction,
+      Value<int> startedAt,
+      Value<int> endedAt,
+      Value<int> durationSeconds,
+      Value<String> audioPath,
+      Value<String> transcriptionStatus,
+      Value<String> rawTranscript,
+      Value<int> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$CallsTableTableReferences
+    extends BaseReferences<_$AppDatabase, $CallsTableTable, CallsTableData> {
+  $$CallsTableTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<
+    $CallUtterancesTableTable,
+    List<CallUtterancesTableData>
+  >
+  _callUtterancesTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.callUtterancesTable,
+        aliasName: $_aliasNameGenerator(
+          db.callsTable.id,
+          db.callUtterancesTable.callId,
+        ),
+      );
+
+  $$CallUtterancesTableTableProcessedTableManager get callUtterancesTableRefs {
+    final manager = $$CallUtterancesTableTableTableManager(
+      $_db,
+      $_db.callUtterancesTable,
+    ).filter((f) => f.callId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _callUtterancesTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$CallsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $CallsTableTable> {
+  $$CallsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phoneNumber => $composableBuilder(
+    column: $table.phoneNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contactName => $composableBuilder(
+    column: $table.contactName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get direction => $composableBuilder(
+    column: $table.direction,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get endedAt => $composableBuilder(
+    column: $table.endedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get durationSeconds => $composableBuilder(
+    column: $table.durationSeconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get audioPath => $composableBuilder(
+    column: $table.audioPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get transcriptionStatus => $composableBuilder(
+    column: $table.transcriptionStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rawTranscript => $composableBuilder(
+    column: $table.rawTranscript,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> callUtterancesTableRefs(
+    Expression<bool> Function($$CallUtterancesTableTableFilterComposer f) f,
+  ) {
+    final $$CallUtterancesTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.callUtterancesTable,
+      getReferencedColumn: (t) => t.callId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CallUtterancesTableTableFilterComposer(
+            $db: $db,
+            $table: $db.callUtterancesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$CallsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $CallsTableTable> {
+  $$CallsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phoneNumber => $composableBuilder(
+    column: $table.phoneNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contactName => $composableBuilder(
+    column: $table.contactName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get direction => $composableBuilder(
+    column: $table.direction,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get endedAt => $composableBuilder(
+    column: $table.endedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get durationSeconds => $composableBuilder(
+    column: $table.durationSeconds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get audioPath => $composableBuilder(
+    column: $table.audioPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get transcriptionStatus => $composableBuilder(
+    column: $table.transcriptionStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rawTranscript => $composableBuilder(
+    column: $table.rawTranscript,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CallsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CallsTableTable> {
+  $$CallsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get phoneNumber => $composableBuilder(
+    column: $table.phoneNumber,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get contactName => $composableBuilder(
+    column: $table.contactName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get direction =>
+      $composableBuilder(column: $table.direction, builder: (column) => column);
+
+  GeneratedColumn<int> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get endedAt =>
+      $composableBuilder(column: $table.endedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get durationSeconds => $composableBuilder(
+    column: $table.durationSeconds,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get audioPath =>
+      $composableBuilder(column: $table.audioPath, builder: (column) => column);
+
+  GeneratedColumn<String> get transcriptionStatus => $composableBuilder(
+    column: $table.transcriptionStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get rawTranscript => $composableBuilder(
+    column: $table.rawTranscript,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> callUtterancesTableRefs<T extends Object>(
+    Expression<T> Function($$CallUtterancesTableTableAnnotationComposer a) f,
+  ) {
+    final $$CallUtterancesTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.callUtterancesTable,
+          getReferencedColumn: (t) => t.callId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CallUtterancesTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.callUtterancesTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$CallsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CallsTableTable,
+          CallsTableData,
+          $$CallsTableTableFilterComposer,
+          $$CallsTableTableOrderingComposer,
+          $$CallsTableTableAnnotationComposer,
+          $$CallsTableTableCreateCompanionBuilder,
+          $$CallsTableTableUpdateCompanionBuilder,
+          (CallsTableData, $$CallsTableTableReferences),
+          CallsTableData,
+          PrefetchHooks Function({bool callUtterancesTableRefs})
+        > {
+  $$CallsTableTableTableManager(_$AppDatabase db, $CallsTableTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CallsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CallsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CallsTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> phoneNumber = const Value.absent(),
+                Value<String> contactName = const Value.absent(),
+                Value<String> direction = const Value.absent(),
+                Value<int> startedAt = const Value.absent(),
+                Value<int> endedAt = const Value.absent(),
+                Value<int> durationSeconds = const Value.absent(),
+                Value<String> audioPath = const Value.absent(),
+                Value<String> transcriptionStatus = const Value.absent(),
+                Value<String> rawTranscript = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CallsTableCompanion(
+                id: id,
+                phoneNumber: phoneNumber,
+                contactName: contactName,
+                direction: direction,
+                startedAt: startedAt,
+                endedAt: endedAt,
+                durationSeconds: durationSeconds,
+                audioPath: audioPath,
+                transcriptionStatus: transcriptionStatus,
+                rawTranscript: rawTranscript,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String phoneNumber,
+                Value<String> contactName = const Value.absent(),
+                required String direction,
+                required int startedAt,
+                required int endedAt,
+                required int durationSeconds,
+                required String audioPath,
+                Value<String> transcriptionStatus = const Value.absent(),
+                Value<String> rawTranscript = const Value.absent(),
+                required int createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CallsTableCompanion.insert(
+                id: id,
+                phoneNumber: phoneNumber,
+                contactName: contactName,
+                direction: direction,
+                startedAt: startedAt,
+                endedAt: endedAt,
+                durationSeconds: durationSeconds,
+                audioPath: audioPath,
+                transcriptionStatus: transcriptionStatus,
+                rawTranscript: rawTranscript,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$CallsTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({callUtterancesTableRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (callUtterancesTableRefs) db.callUtterancesTable,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (callUtterancesTableRefs)
+                    await $_getPrefetchedData<
+                      CallsTableData,
+                      $CallsTableTable,
+                      CallUtterancesTableData
+                    >(
+                      currentTable: table,
+                      referencedTable: $$CallsTableTableReferences
+                          ._callUtterancesTableRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$CallsTableTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).callUtterancesTableRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.callId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$CallsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CallsTableTable,
+      CallsTableData,
+      $$CallsTableTableFilterComposer,
+      $$CallsTableTableOrderingComposer,
+      $$CallsTableTableAnnotationComposer,
+      $$CallsTableTableCreateCompanionBuilder,
+      $$CallsTableTableUpdateCompanionBuilder,
+      (CallsTableData, $$CallsTableTableReferences),
+      CallsTableData,
+      PrefetchHooks Function({bool callUtterancesTableRefs})
+    >;
+typedef $$CallUtterancesTableTableCreateCompanionBuilder =
+    CallUtterancesTableCompanion Function({
+      required String id,
+      required String callId,
+      required String speaker,
+      required String utteranceText,
+      Value<int?> startMs,
+      required int sequence,
+      Value<int> rowid,
+    });
+typedef $$CallUtterancesTableTableUpdateCompanionBuilder =
+    CallUtterancesTableCompanion Function({
+      Value<String> id,
+      Value<String> callId,
+      Value<String> speaker,
+      Value<String> utteranceText,
+      Value<int?> startMs,
+      Value<int> sequence,
+      Value<int> rowid,
+    });
+
+final class $$CallUtterancesTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $CallUtterancesTableTable,
+          CallUtterancesTableData
+        > {
+  $$CallUtterancesTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $CallsTableTable _callIdTable(_$AppDatabase db) =>
+      db.callsTable.createAlias(
+        $_aliasNameGenerator(db.callUtterancesTable.callId, db.callsTable.id),
+      );
+
+  $$CallsTableTableProcessedTableManager get callId {
+    final $_column = $_itemColumn<String>('call_id')!;
+
+    final manager = $$CallsTableTableTableManager(
+      $_db,
+      $_db.callsTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_callIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$CallUtterancesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $CallUtterancesTableTable> {
+  $$CallUtterancesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get speaker => $composableBuilder(
+    column: $table.speaker,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get utteranceText => $composableBuilder(
+    column: $table.utteranceText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get startMs => $composableBuilder(
+    column: $table.startMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sequence => $composableBuilder(
+    column: $table.sequence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$CallsTableTableFilterComposer get callId {
+    final $$CallsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.callId,
+      referencedTable: $db.callsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CallsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.callsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CallUtterancesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $CallUtterancesTableTable> {
+  $$CallUtterancesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get speaker => $composableBuilder(
+    column: $table.speaker,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get utteranceText => $composableBuilder(
+    column: $table.utteranceText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get startMs => $composableBuilder(
+    column: $table.startMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sequence => $composableBuilder(
+    column: $table.sequence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$CallsTableTableOrderingComposer get callId {
+    final $$CallsTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.callId,
+      referencedTable: $db.callsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CallsTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.callsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CallUtterancesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CallUtterancesTableTable> {
+  $$CallUtterancesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get speaker =>
+      $composableBuilder(column: $table.speaker, builder: (column) => column);
+
+  GeneratedColumn<String> get utteranceText => $composableBuilder(
+    column: $table.utteranceText,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get startMs =>
+      $composableBuilder(column: $table.startMs, builder: (column) => column);
+
+  GeneratedColumn<int> get sequence =>
+      $composableBuilder(column: $table.sequence, builder: (column) => column);
+
+  $$CallsTableTableAnnotationComposer get callId {
+    final $$CallsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.callId,
+      referencedTable: $db.callsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CallsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.callsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CallUtterancesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CallUtterancesTableTable,
+          CallUtterancesTableData,
+          $$CallUtterancesTableTableFilterComposer,
+          $$CallUtterancesTableTableOrderingComposer,
+          $$CallUtterancesTableTableAnnotationComposer,
+          $$CallUtterancesTableTableCreateCompanionBuilder,
+          $$CallUtterancesTableTableUpdateCompanionBuilder,
+          (CallUtterancesTableData, $$CallUtterancesTableTableReferences),
+          CallUtterancesTableData,
+          PrefetchHooks Function({bool callId})
+        > {
+  $$CallUtterancesTableTableTableManager(
+    _$AppDatabase db,
+    $CallUtterancesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CallUtterancesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CallUtterancesTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$CallUtterancesTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> callId = const Value.absent(),
+                Value<String> speaker = const Value.absent(),
+                Value<String> utteranceText = const Value.absent(),
+                Value<int?> startMs = const Value.absent(),
+                Value<int> sequence = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CallUtterancesTableCompanion(
+                id: id,
+                callId: callId,
+                speaker: speaker,
+                utteranceText: utteranceText,
+                startMs: startMs,
+                sequence: sequence,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String callId,
+                required String speaker,
+                required String utteranceText,
+                Value<int?> startMs = const Value.absent(),
+                required int sequence,
+                Value<int> rowid = const Value.absent(),
+              }) => CallUtterancesTableCompanion.insert(
+                id: id,
+                callId: callId,
+                speaker: speaker,
+                utteranceText: utteranceText,
+                startMs: startMs,
+                sequence: sequence,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$CallUtterancesTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({callId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (callId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.callId,
+                                referencedTable:
+                                    $$CallUtterancesTableTableReferences
+                                        ._callIdTable(db),
+                                referencedColumn:
+                                    $$CallUtterancesTableTableReferences
+                                        ._callIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$CallUtterancesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CallUtterancesTableTable,
+      CallUtterancesTableData,
+      $$CallUtterancesTableTableFilterComposer,
+      $$CallUtterancesTableTableOrderingComposer,
+      $$CallUtterancesTableTableAnnotationComposer,
+      $$CallUtterancesTableTableCreateCompanionBuilder,
+      $$CallUtterancesTableTableUpdateCompanionBuilder,
+      (CallUtterancesTableData, $$CallUtterancesTableTableReferences),
+      CallUtterancesTableData,
+      PrefetchHooks Function({bool callId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2271,6 +4180,10 @@ class $AppDatabaseManager {
       $$PeopleTableTableManager(_db, _db.people);
   $$NotePeopleTableTableManager get notePeople =>
       $$NotePeopleTableTableManager(_db, _db.notePeople);
+  $$CallsTableTableTableManager get callsTable =>
+      $$CallsTableTableTableManager(_db, _db.callsTable);
+  $$CallUtterancesTableTableTableManager get callUtterancesTable =>
+      $$CallUtterancesTableTableTableManager(_db, _db.callUtterancesTable);
 }
 
 mixin _$NotesDaoMixin on DatabaseAccessor<AppDatabase> {
@@ -2285,4 +4198,9 @@ mixin _$NotePeopleDaoMixin on DatabaseAccessor<AppDatabase> {
   $NotesTable get notes => attachedDatabase.notes;
   $PeopleTable get people => attachedDatabase.people;
   $NotePeopleTable get notePeople => attachedDatabase.notePeople;
+}
+mixin _$CallsDaoMixin on DatabaseAccessor<AppDatabase> {
+  $CallsTableTable get callsTable => attachedDatabase.callsTable;
+  $CallUtterancesTableTable get callUtterancesTable =>
+      attachedDatabase.callUtterancesTable;
 }

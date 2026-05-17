@@ -10,11 +10,14 @@ import 'package:uuid/uuid.dart';
 import 'tables/notes_table.dart';
 import 'tables/people_table.dart';
 import 'tables/note_people_table.dart';
+import 'tables/calls_table.dart';
+import 'tables/call_utterances_table.dart';
 
 part 'app_database.g.dart';
 part 'daos/notes_dao.dart';
 part 'daos/people_dao.dart';
 part 'daos/note_people_dao.dart';
+part 'daos/calls_dao.dart';
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
@@ -25,8 +28,8 @@ LazyDatabase _openConnection() {
 }
 
 @DriftDatabase(
-  tables: [Notes, People, NotePeople],
-  daos: [NotesDao, PeopleDao, NotePeopleDao],
+  tables: [Notes, People, NotePeople, CallsTable, CallUtterancesTable],
+  daos: [NotesDao, PeopleDao, NotePeopleDao, CallsDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
@@ -34,7 +37,17 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.test(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (migrator, from, to) async {
+          if (from < 2) {
+            await migrator.createTable(callsTable);
+            await migrator.createTable(callUtterancesTable);
+          }
+        },
+      );
 }
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {

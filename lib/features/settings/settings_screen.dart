@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/repositories/settings_repository.dart';
@@ -15,6 +18,11 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  // ── Call recording state ─────────────────────────────────────────────────
+  static const _callsChannel = MethodChannel('voiceon/calls');
+  bool _callRecordingEnabled = false;
+
+  // ── AI Transcription state ───────────────────────────────────────────────
   late TextEditingController _apiKeyController;
   AiProvider? _selectedProvider;
   bool _showApiKey = false;
@@ -27,7 +35,96 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     super.initState();
     _apiKeyController = TextEditingController();
     _loadSettings();
+    _loadCallRecordingEnabled();
   }
+
+  // ── Call recording helpers ───────────────────────────────────────────────
+
+  Future<void> _loadCallRecordingEnabled() async {
+    try {
+      final enabled =
+          await _callsChannel.invokeMethod<bool>('isCallRecordingEnabled') ??
+          false;
+      if (mounted) setState(() => _callRecordingEnabled = enabled);
+    } catch (_) {}
+  }
+
+  Future<void> _onCallRecordingToggled(bool newValue) async {
+    if (newValue) {
+      // Show legal consent dialog before enabling
+      final accepted = await _showConsentDialog();
+      if (!accepted) return;
+
+      // Request required permissions
+      final permissionsGranted = await _requestCallPermissions();
+      if (!permissionsGranted) return;
+    }
+
+    try {
+      await _callsChannel.invokeMethod('setCallRecordingEnabled', newValue);
+      if (mounted) setState(() => _callRecordingEnabled = newValue);
+    } catch (_) {}
+  }
+
+  Future<bool> _showConsentDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('⚠️ Legal Notice'),
+        content: const SingleChildScrollView(
+          child: Text(
+            'Recording phone calls may be illegal in your jurisdiction without '
+            'the consent of all parties involved.\n\n'
+            'By enabling this feature, you confirm that:\n'
+            '• You have the legal right to record calls in your country\n'
+            '• You will inform other parties when required by law\n'
+            '• You accept full responsibility for compliance with local laws\n\n'
+            'Voiceon is not responsible for any legal consequences arising '
+            'from your use of this feature.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('I Understand, Enable'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Future<bool> _requestCallPermissions() async {
+    final statuses = await [
+      Permission.phone,
+      Permission.contacts,
+      Permission.microphone,
+      Permission.notification,
+    ].request();
+
+    final phoneDenied = statuses[Permission.phone] != PermissionStatus.granted;
+    final micDenied =
+        statuses[Permission.microphone] != PermissionStatus.granted;
+
+    if ((phoneDenied || micDenied) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Required permissions were denied. Call recording cannot be enabled.',
+          ),
+        ),
+      );
+      return false;
+    }
+    return true;
+  }
+
+  // ── AI Transcription helpers ─────────────────────────────────────────────
 
   Future<void> _loadSettings() async {
     final settingsRepo = await ref.read(settingsRepositoryProvider.future);
@@ -256,6 +353,76 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 32),
 
+            // ── Call Recording ──────────────────────────────────────────
+            const Text('Call Recording', style: TextStyle(letterSpacing: 1.2)),
+            const SizedBox(height: 12),
+
+            Card(
+              margin: EdgeInsets.zero,
+              shadowColor: Colors.transparent,
+              child: SwitchListTile(
+                title: const Text('Record Calls'),
+                value: _callRecordingEnabled,
+                onChanged: _onCallRecordingToggled,
+                secondary: Icon(Icons.call_outlined),
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Automatically record incoming and outgoing calls',
+              style: TextStyle(fontSize: 12),
+            ),
+
+            if (_callRecordingEnabled) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer.withAlpha(180),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Voiceon will run in the background and automatically '
+                        'record calls. A notification will appear during recording.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                margin: EdgeInsets.zero,
+                shadowColor: Colors.transparent,
+                child: ListTile(
+                  leading: const Icon(Icons.list_alt),
+                  title: const Text('View Recorded Calls'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/calls'),
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 32),
+
             // ── AI Transcription ────────────────────────────────────────
             const Text(
               'AI Transcription',
@@ -264,7 +431,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 12),
 
             DropdownButtonFormField<AiProvider>(
-              value: _selectedProvider,
+              initialValue: _selectedProvider,
               isExpanded: true,
               decoration: InputDecoration(
                 labelText: 'Provider',

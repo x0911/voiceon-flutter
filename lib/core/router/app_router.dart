@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/calls/calls_screen.dart';
+import '../../features/calls/call_detail_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/metadata/metadata_screen.dart';
 import '../../features/note_detail/note_detail_screen.dart';
@@ -65,6 +67,24 @@ final appRouter = GoRouter(
       path: '/settings',
       name: 'settings',
       builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: '/calls',
+      name: 'calls',
+      builder: (context, state) => const CallsScreen(),
+    ),
+    GoRoute(
+      path: '/calls/:id',
+      name: 'callDetail',
+      builder: (context, state) {
+        final id = state.pathParameters['id'];
+        if (id == null || id.isEmpty) {
+          return const Scaffold(
+            body: Center(child: Text('Call ID is invalid.')),
+          );
+        }
+        return CallDetailScreen(callId: id);
+      },
     ),
   ],
 );

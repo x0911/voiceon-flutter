@@ -1,0 +1,542 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
+
+import '../models/call_utterance.dart';
+import '../repositories/settings_repository.dart';
+import '../transcription/transcription_provider_config.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Result type
+// ─────────────────────────────────────────────────────────────────────────────
+
+class CallTranscriptionResult {
+  final bool success;
+  final String rawText;
+  final List<CallUtterance> utterances;
+  final String? errorMessage;
+
+  const CallTranscriptionResult({
+    required this.success,
+    required this.rawText,
+    required this.utterances,
+    this.errorMessage,
+  });
+
+  const CallTranscriptionResult.noProvider()
+      : success = false,
+        rawText = '',
+        utterances = const [],
+        errorMessage = 'No AI provider configured';
+
+  const CallTranscriptionResult.failed(String message)
+      : success = false,
+        rawText = '',
+        utterances = const [],
+        errorMessage = message;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Service
+// ─────────────────────────────────────────────────────────────────────────────
+
+class CallTranscriptionService {
+  final SettingsRepository _settings;
+
+  CallTranscriptionService(this._settings);
+
+  Future<CallTranscriptionResult> transcribeCall(String audioPath) async {
+    final config = await _settings.getActiveConfig();
+    if (config.provider == null || config.apiKey.isEmpty) {
+      return const CallTranscriptionResult.noProvider();
+    }
+
+    try {
+      return await _transcribeWithProvider(
+        config.provider!,
+        config.apiKey,
+        audioPath,
+      ).timeout(const Duration(seconds: 60));
+    } on TimeoutException {
+      return const CallTranscriptionResult.failed('Transcription timed out');
+    } catch (e) {
+      return CallTranscriptionResult.failed(e.toString());
+    }
+  }
+
+  Future<CallTranscriptionResult> _transcribeWithProvider(
+    AiProvider provider,
+    String apiKey,
+    String audioPath,
+  ) async {
+    switch (provider) {
+      case AiProvider.groq:
+        return _transcribeGroq(audioPath, apiKey);
+      case AiProvider.openai:
+        return _transcribeOpenAI(audioPath, apiKey);
+      case AiProvider.assemblyai:
+        return _transcribeAssemblyAI(audioPath, apiKey);
+      case AiProvider.deepgram:
+        return _transcribeDeepgram(audioPath, apiKey);
+      case AiProvider.revai:
+        return _transcribeRevAI(audioPath, apiKey);
+    }
+  }
+
+  // ── Groq (Whisper) ────────────────────────────────────────────────────────
+
+  Future<CallTranscriptionResult> _transcribeGroq(
+    String audioPath,
+    String apiKey,
+  ) async {
+    final file = File(audioPath);
+    if (!file.existsSync()) {
+      throw Exception('Audio file not found at $audioPath');
+    }
+
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('https://api.groq.com/openai/v1/audio/transcriptions'),
+    );
+
+    request.headers['Authorization'] = 'Bearer $apiKey';
+    request.fields['model'] = 'whisper-large-v3';
+    request.fields['response_format'] = 'verbose_json';
+    request.fields['prompt'] = _callDiarizationPrompt;
+
+    final fileBytes = await file.readAsBytes();
+    request.files.add(
+      http.MultipartFile.fromBytes('file', fileBytes, filename: 'call.m4a'),
+    );
+
+    final response = await request.send();
+    final body = await response.stream.bytesToString();
+
+    if (response.statusCode != 200) {
+      throw Exception('Groq HTTP ${response.statusCode}: $body');
+    }
+
+    final decoded = jsonDecode(body) as Map<String, dynamic>;
+    final rawText = (decoded['text'] as String? ?? '').trim();
+    final utterances = _parseUtterancesFromJson(rawText);
+
+    return CallTranscriptionResult(
+      success: true,
+      rawText: rawText,
+      utterances: utterances,
+    );
+  }
+
+  // ── OpenAI Whisper ────────────────────────────────────────────────────────
+
+  Future<CallTranscriptionResult> _transcribeOpenAI(
+    String audioPath,
+    String apiKey,
+  ) async {
+    final file = File(audioPath);
+    if (!file.existsSync()) {
+      throw Exception('Audio file not found at $audioPath');
+    }
+
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('https://api.openai.com/v1/audio/transcriptions'),
+    );
+
+    request.headers['Authorization'] = 'Bearer $apiKey';
+    request.fields['model'] = 'whisper-1';
+    request.fields['response_format'] = 'verbose_json';
+    request.fields['prompt'] = _callDiarizationPrompt;
+
+    final fileBytes = await file.readAsBytes();
+    request.files.add(
+      http.MultipartFile.fromBytes('file', fileBytes, filename: 'call.m4a'),
+    );
+
+    final response = await request.send();
+    final body = await response.stream.bytesToString();
+
+    if (response.statusCode != 200) {
+      throw Exception('OpenAI HTTP ${response.statusCode}: $body');
+    }
+
+    final decoded = jsonDecode(body) as Map<String, dynamic>;
+    final rawText = (decoded['text'] as String? ?? '').trim();
+    final utterances = _parseUtterancesFromJson(rawText);
+
+    return CallTranscriptionResult(
+      success: true,
+      rawText: rawText,
+      utterances: utterances,
+    );
+  }
+
+  // ── AssemblyAI (native speaker diarization) ───────────────────────────────
+
+  Future<CallTranscriptionResult> _transcribeAssemblyAI(
+    String audioPath,
+    String apiKey,
+  ) async {
+    final file = File(audioPath);
+    if (!file.existsSync()) {
+      throw Exception('Audio file not found at $audioPath');
+    }
+
+    // Step 1: Upload
+    final fileBytes = await file.readAsBytes();
+    final uploadResponse = await http.post(
+      Uri.parse('https://api.assemblyai.com/v2/upload'),
+      headers: {
+        'Authorization': apiKey,
+        'Content-Type': 'application/octet-stream',
+      },
+      body: fileBytes,
+    );
+
+    if (uploadResponse.statusCode != 200) {
+      throw Exception('AssemblyAI upload failed: HTTP ${uploadResponse.statusCode}');
+    }
+
+    final uploadUrl = (jsonDecode(uploadResponse.body))['upload_url'] as String;
+
+    // Step 2: Submit with speaker_labels = true
+    final submitResponse = await http.post(
+      Uri.parse('https://api.assemblyai.com/v2/transcript'),
+      headers: {
+        'Authorization': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'audio_url': uploadUrl,
+        'language_detection': true,
+        'speaker_labels': true,
+      }),
+    );
+
+    if (submitResponse.statusCode != 200) {
+      throw Exception('AssemblyAI submit failed: HTTP ${submitResponse.statusCode}');
+    }
+
+    final jobId = (jsonDecode(submitResponse.body))['id'] as String;
+
+    // Step 3: Poll
+    for (int i = 0; i < 60; i++) {
+      await Future.delayed(const Duration(seconds: 3));
+
+      final statusResponse = await http.get(
+        Uri.parse('https://api.assemblyai.com/v2/transcript/$jobId'),
+        headers: {'Authorization': apiKey},
+      );
+
+      if (statusResponse.statusCode != 200) {
+        throw Exception('AssemblyAI poll failed: HTTP ${statusResponse.statusCode}');
+      }
+
+      final statusJson = jsonDecode(statusResponse.body) as Map<String, dynamic>;
+      final status = statusJson['status'] as String;
+
+      if (status == 'completed') {
+        final rawText = (statusJson['text'] as String? ?? '').trim();
+
+        // Parse native utterances array: [{speaker: "A", text: "..."}, ...]
+        final List<CallUtterance> utterances = [];
+        final utterancesRaw = statusJson['utterances'] as List<dynamic>?;
+
+        if (utterancesRaw != null && utterancesRaw.isNotEmpty) {
+          // Map AssemblyAI speaker labels A→person_1, B→person_2, etc.
+          final speakerMap = <String, String>{};
+          for (int idx = 0; idx < utterancesRaw.length; idx++) {
+            final u = utterancesRaw[idx] as Map<String, dynamic>;
+            final rawSpeaker = (u['speaker'] as String? ?? 'A').toUpperCase();
+            if (!speakerMap.containsKey(rawSpeaker)) {
+              speakerMap[rawSpeaker] =
+                  'person_${speakerMap.length + 1}';
+            }
+            utterances.add(CallUtterance(
+              id: const Uuid().v4(),
+              callId: '',
+              speaker: speakerMap[rawSpeaker]!,
+              text: (u['text'] as String? ?? '').trim(),
+              startMs: u['start'] as int?,
+              sequence: idx,
+            ));
+          }
+        }
+
+        return CallTranscriptionResult(
+          success: true,
+          rawText: rawText,
+          utterances: utterances,
+        );
+      } else if (status == 'error') {
+        throw Exception('AssemblyAI error: ${statusJson['error']}');
+      }
+      // status == 'processing' or 'queued' → keep polling
+    }
+
+    throw Exception('AssemblyAI polling timed out after 60 attempts');
+  }
+
+  // ── Deepgram (diarize=true) ───────────────────────────────────────────────
+
+  Future<CallTranscriptionResult> _transcribeDeepgram(
+    String audioPath,
+    String apiKey,
+  ) async {
+    final file = File(audioPath);
+    if (!file.existsSync()) {
+      throw Exception('Audio file not found at $audioPath');
+    }
+
+    final fileBytes = await file.readAsBytes();
+
+    final response = await http.post(
+      Uri.parse(
+        'https://api.deepgram.com/v1/listen'
+        '?model=nova-2'
+        '&smart_format=true'
+        '&detect_language=true'
+        '&diarize=true'
+        '&utterances=true',
+      ),
+      headers: {
+        'Authorization': 'Token $apiKey',
+        'Content-Type': 'audio/mp4',
+      },
+      body: fileBytes,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Deepgram HTTP ${response.statusCode}: ${response.body}');
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+
+    // Plain text from the first channel alternative
+    final rawText = (json['results']?['channels']?[0]?['alternatives']?[0]
+            ?['transcript'] as String? ??
+        '').trim();
+
+    // Parse utterances array: [{speaker: 0, transcript: "..."}, ...]
+    final List<CallUtterance> utterances = [];
+    final utterancesRaw =
+        json['results']?['utterances'] as List<dynamic>?;
+
+    if (utterancesRaw != null && utterancesRaw.isNotEmpty) {
+      final speakerMap = <int, String>{};
+      for (int idx = 0; idx < utterancesRaw.length; idx++) {
+        final u = utterancesRaw[idx] as Map<String, dynamic>;
+        final speakerNum = (u['speaker'] as num? ?? 0).toInt();
+        if (!speakerMap.containsKey(speakerNum)) {
+          speakerMap[speakerNum] = 'person_${speakerMap.length + 1}';
+        }
+        utterances.add(CallUtterance(
+          id: const Uuid().v4(),
+          callId: '',
+          speaker: speakerMap[speakerNum]!,
+          text: (u['transcript'] as String? ?? '').trim(),
+          startMs: ((u['start'] as num?)?.toDouble() ?? 0.0 * 1000).toInt(),
+          sequence: idx,
+        ));
+      }
+    }
+
+    return CallTranscriptionResult(
+      success: true,
+      rawText: rawText,
+      utterances: utterances,
+    );
+  }
+
+  // ── Rev.ai (speaker-labeled by default) ──────────────────────────────────
+
+  Future<CallTranscriptionResult> _transcribeRevAI(
+    String audioPath,
+    String apiKey,
+  ) async {
+    final file = File(audioPath);
+    if (!file.existsSync()) {
+      throw Exception('Audio file not found at $audioPath');
+    }
+
+    // Step 1: Upload job
+    final fileBytes = await file.readAsBytes();
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('https://api.rev.ai/speechtotext/v1/jobs'),
+    );
+    request.headers['Authorization'] = 'Bearer $apiKey';
+    request.fields['metadata'] = 'voiceon_call';
+    request.files.add(
+      http.MultipartFile.fromBytes('media', fileBytes, filename: 'call.m4a'),
+    );
+
+    final uploadResponse = await request.send();
+    final uploadBody = await uploadResponse.stream.bytesToString();
+
+    if (uploadResponse.statusCode != 201) {
+      throw Exception('Rev.ai job creation failed: HTTP ${uploadResponse.statusCode}');
+    }
+
+    final jobId = (jsonDecode(uploadBody))['id'] as String;
+
+    // Step 2: Poll
+    for (int i = 0; i < 60; i++) {
+      await Future.delayed(const Duration(seconds: 3));
+
+      final statusResponse = await http.get(
+        Uri.parse('https://api.rev.ai/speechtotext/v1/jobs/$jobId'),
+        headers: {'Authorization': 'Bearer $apiKey'},
+      );
+
+      if (statusResponse.statusCode != 200) {
+        throw Exception('Rev.ai poll failed: HTTP ${statusResponse.statusCode}');
+      }
+
+      final statusJson = jsonDecode(statusResponse.body) as Map<String, dynamic>;
+      final status = statusJson['status'] as String;
+
+      if (status == 'transcribed') {
+        // Step 3: Fetch structured transcript
+        final transcriptResponse = await http.get(
+          Uri.parse(
+            'https://api.rev.ai/speechtotext/v1/jobs/$jobId/transcript',
+          ),
+          headers: {
+            'Authorization': 'Bearer $apiKey',
+            'Accept': 'application/vnd.rev.transcript.v1.0+json',
+          },
+        );
+
+        if (transcriptResponse.statusCode != 200) {
+          throw Exception(
+            'Rev.ai transcript fetch failed: HTTP ${transcriptResponse.statusCode}',
+          );
+        }
+
+        final transcriptJson =
+            jsonDecode(transcriptResponse.body) as Map<String, dynamic>;
+        final monologues = transcriptJson['monologues'] as List<dynamic>;
+
+        // Each monologue has a speaker int and a list of elements
+        final speakerMap = <int, String>{};
+        final utterances = <CallUtterance>[];
+        final rawParts = <String>[];
+
+        for (final mono in monologues) {
+          final monoMap = mono as Map<String, dynamic>;
+          final speakerNum = (monoMap['speaker'] as num? ?? 0).toInt();
+          if (!speakerMap.containsKey(speakerNum)) {
+            speakerMap[speakerNum] = 'person_${speakerMap.length + 1}';
+          }
+
+          // Collect text elements for this monologue turn
+          final elements = monoMap['elements'] as List<dynamic>;
+          final turnText = StringBuffer();
+          int? firstStartMs;
+
+          for (final elem in elements) {
+            final elemMap = elem as Map<String, dynamic>;
+            if (elemMap['type'] == 'text') {
+              turnText.write(elemMap['value'] as String? ?? '');
+              firstStartMs ??=
+                  ((elemMap['ts'] as num?)?.toDouble() ?? 0.0 * 1000).toInt();
+            } else if (elemMap['type'] == 'punct') {
+              turnText.write(elemMap['value'] as String? ?? '');
+            }
+          }
+
+          final text = turnText.toString().trim();
+          if (text.isNotEmpty) {
+            rawParts.add(
+              '${speakerMap[speakerNum]}: $text',
+            );
+            utterances.add(CallUtterance(
+              id: const Uuid().v4(),
+              callId: '',
+              speaker: speakerMap[speakerNum]!,
+              text: text,
+              startMs: firstStartMs,
+              sequence: utterances.length,
+            ));
+          }
+        }
+
+        return CallTranscriptionResult(
+          success: true,
+          rawText: rawParts.join('\n'),
+          utterances: utterances,
+        );
+      } else if (status == 'failed') {
+        throw Exception(
+          'Rev.ai failed: ${statusJson['failure_detail']}',
+        );
+      }
+    }
+
+    throw Exception('Rev.ai polling timed out after 60 attempts');
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Shared helpers
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Prompt injected into Whisper-based providers (Groq, OpenAI).
+  /// Instructs the model to return speaker-labeled JSON instead of plain text.
+  static const String _callDiarizationPrompt =
+      'This is a phone call recording between two people. '
+      'Transcribe the conversation and format it as a JSON array ONLY, no other text. '
+      'Each element must have "by" (either "person_1" or "person_2") and "text" fields. '
+      'Person_1 is the phone owner. Person_2 is the other caller. '
+      r'Example: [{"by":"person_1","text":"Hello"},{"by":"person_2","text":"Hi there"}] '
+      'If you cannot determine the speaker, alternate between person_1 and person_2. '
+      'Do not include any text outside the JSON array.';
+
+  /// Tries to parse a JSON array of speaker-labeled utterances from Whisper output.
+  /// Strips any markdown code fences the model may have added.
+  /// Returns an empty list if parsing fails (caller falls back to rawText).
+  List<CallUtterance> _parseUtterancesFromJson(String jsonText) {
+    try {
+      final clean = jsonText
+          .replaceAll(RegExp(r'```json\s*'), '')
+          .replaceAll(RegExp(r'```\s*'), '')
+          .trim();
+
+      // The model sometimes prepends/appends prose — find the first '[' and last ']'
+      final start = clean.indexOf('[');
+      final end = clean.lastIndexOf(']');
+      if (start == -1 || end == -1 || end <= start) return [];
+
+      final arrayText = clean.substring(start, end + 1);
+      final list = jsonDecode(arrayText) as List<dynamic>;
+
+      return list.asMap().entries.map((entry) {
+        final map = entry.value as Map<String, dynamic>;
+        return CallUtterance(
+          id: const Uuid().v4(),
+          callId: '',
+          speaker: (map['by'] as String?)?.trim() ?? 'person_1',
+          text: (map['text'] as String?)?.trim() ?? '',
+          startMs: null,
+          sequence: entry.key,
+        );
+      }).where((u) => u.text.isNotEmpty).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Riverpod provider
+// ─────────────────────────────────────────────────────────────────────────────
+
+final callTranscriptionServiceProvider =
+    FutureProvider<CallTranscriptionService>((ref) async {
+  final settingsRepo = await ref.watch(settingsRepositoryProvider.future);
+  return CallTranscriptionService(settingsRepo);
+});
