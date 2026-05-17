@@ -55,17 +55,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             snap: false,
             title: const Text('Voiceon'),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.settings_outlined),
-                tooltip: 'Settings',
-                onPressed: () => context.push('/settings'),
-              ),
               if (filters.hasFilters)
                 IconButton(
                   icon: const Icon(Icons.filter_alt_off),
                   tooltip: 'Clear filters',
                   onPressed: filterNotifier.clearFilters,
                 ),
+              IconButton(
+                icon: const Icon(Icons.settings_outlined),
+                tooltip: 'Settings',
+                onPressed: () => context.push('/settings'),
+              ),
             ],
           ),
           SliverToBoxAdapter(
@@ -98,7 +98,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     title: 'Priority',
                     children: NotePriority.values.map((priority) {
                       return FilterChip(
-                        label: Text(priority.name.toUpperCase()),
+                        label: Text(
+                          priority.name[0].toUpperCase() +
+                              priority.name.substring(1),
+                        ),
                         selected: filters.priorities.contains(priority),
                         showCheckmark: false,
                         selectedColor: Theme.of(context).colorScheme.primary,

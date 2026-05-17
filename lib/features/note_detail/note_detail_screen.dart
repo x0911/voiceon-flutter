@@ -46,6 +46,12 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
   int _maxMs = 0;
   PlayerState _playerState = PlayerState.stopped;
 
+  // FIX: track whether we have loaded the note into local state at least once.
+  // _noteLoaded prevents _syncNoteValues from overwriting user edits on every
+  // stream rebuild, while still allowing the initial load to populate fields.
+  bool _noteLoaded = false;
+  String? _loadedNoteId;
+
   NoteModel? _note;
   Set<String> _selectedPersonIds = {};
   NotePriority _editedPriority = NotePriority.low;
@@ -61,17 +67,13 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
       milliseconds,
     ) {
       if (!mounted) return;
-      setState(() {
-        _currentMs = milliseconds;
-      });
+      setState(() => _currentMs = milliseconds);
     });
     _playerStateSubscription = _playerController.onPlayerStateChanged.listen((
       state,
     ) {
       if (!mounted) return;
-      setState(() {
-        _playerState = state;
-      });
+      setState(() => _playerState = state);
     });
   }
 
@@ -115,34 +117,58 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
         _audioMissing = false;
       });
     } catch (_) {
-      if (mounted) {
-        setState(() {
-          _audioMissing = true;
-        });
-      }
+      if (mounted) setState(() => _audioMissing = true);
     } finally {
-      if (mounted) {
-        setState(() {
-          _isPreparingAudio = false;
-        });
-      }
+      if (mounted) setState(() => _isPreparingAudio = false);
     }
   }
 
+  // FIX: Only sync from the stream when we haven't loaded yet OR when the
+  // note ID changes (different note). Never overwrite while user is editing.
   void _syncNoteValues(NoteModel note) {
-    if (_note?.id == note.id && !_isEditing) return;
+    final isNewNote = _loadedNoteId != note.id;
+
+    // Always update the stored reference so _saveNote has the latest
+    // immutable fields (audioPath, audioDurationSeconds, createdAt).
     _note = note;
+
+    if (_noteLoaded && !isNewNote) {
+      // Already initialised for this note — don't overwrite the user's edits.
+      return;
+    }
+
+    // First load (or a different note): populate all editable fields.
+    _loadedNoteId = note.id;
+    _noteLoaded = true;
+
     _labelController.text = note.label;
     _descriptionController.text = note.description;
     _contentController.text = note.content;
-    _selectedPersonIds = note.taggedPeople.map((person) => person.id).toSet();
+    _selectedPersonIds = note.taggedPeople.map((p) => p.id).toSet();
     _editedPriority = note.priority;
     _editedIsTodo = note.isTodo;
     _editedIsCompleted = note.isCompleted;
     _editedDueDate = note.dueDate;
+
     if (!_isPreparingAudio) {
       _prepareAudio(note.audioPath);
     }
+  }
+
+  // FIX: Enter edit mode explicitly populates all fields from the current note
+  // so the user always starts editing from the latest saved values.
+  void _enterEditMode(NoteModel note) {
+    _labelController.text = note.label;
+    _descriptionController.text = note.description;
+    _contentController.text = note.content;
+    _selectedPersonIds = note.taggedPeople.map((p) => p.id).toSet();
+    _editedPriority = note.priority;
+    _editedIsTodo = note.isTodo;
+    _editedIsCompleted = note.isCompleted;
+    _editedDueDate = note.dueDate;
+    setState(() {
+      _isEditing = true;
+    });
   }
 
   Future<void> _togglePlayback() async {
@@ -162,24 +188,22 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
   Future<void> _confirmDelete(NoteModel note) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Delete note?'),
-          content: const Text(
-            'This will permanently delete the note and its recording.',
+      builder: (context) => AlertDialog(
+        title: const Text('Delete note?'),
+        content: const Text(
+          'This will permanently delete the note and its recording.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
 
     if (shouldDelete != true) return;
@@ -203,17 +227,13 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
   }
 
   Future<void> _retranscribe(NoteModel note) async {
-    setState(() {
-      _isTranscribing = true;
-    });
+    setState(() => _isTranscribing = true);
 
     final transcriptionServiceFuture = ref.read(transcriptionServiceProvider);
 
     if (transcriptionServiceFuture is! AsyncData<TranscriptionService>) {
       if (!mounted) return;
-      setState(() {
-        _isTranscribing = false;
-      });
+      setState(() => _isTranscribing = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Transcription service unavailable.')),
       );
@@ -224,9 +244,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
     final result = await transcriptionService.transcribe(note.audioPath);
 
     if (!mounted) return;
-    setState(() {
-      _isTranscribing = false;
-    });
+    setState(() => _isTranscribing = false);
 
     if (result.status == TranscriptionStatus.success) {
       if (result.text.trim().isEmpty) {
@@ -235,6 +253,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
         );
         return;
       }
+      // FIX: update the controller directly — this is the editable state.
       setState(() {
         _contentController.text = result.text;
         _showTranscript = true;
@@ -301,6 +320,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
         }
 
         _syncNoteValues(note);
+
         final totalSeconds = note.audioDurationSeconds;
         final maxDuration = Duration(
           milliseconds: _maxMs > 0 ? _maxMs : totalSeconds * 1000,
@@ -319,18 +339,11 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
               IconButton(
                 icon: Icon(_isEditing ? Icons.check : Icons.edit),
                 tooltip: _isEditing ? 'Save note' : 'Edit note',
+                // FIX: use _enterEditMode so fields are always fresh when
+                // the pencil icon is tapped.
                 onPressed: _isEditing
                     ? () => _saveNote(note)
-                    : () {
-                        setState(() {
-                          _isEditing = true;
-                          _showTranscript = true;
-                          _editedPriority = note.priority;
-                          _editedIsTodo = note.isTodo;
-                          _editedIsCompleted = note.isCompleted;
-                          _editedDueDate = note.dueDate;
-                        });
-                      },
+                    : () => _enterEditMode(note),
               ),
               IconButton(
                 icon: const Icon(Icons.delete_outline),
@@ -461,10 +474,12 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
                   _buildPrioritySelector(),
                   const SizedBox(height: 16),
                   _buildTodoSwitch(),
-                  if (_isTodo) const SizedBox(height: 12),
-                  if (_isTodo) _buildCompletedSwitch(),
-                  if (_isTodo) const SizedBox(height: 12),
-                  if (_isTodo) _buildDueDatePicker(context),
+                  if (_editedIsTodo) ...[
+                    const SizedBox(height: 12),
+                    _buildCompletedSwitch(),
+                    const SizedBox(height: 12),
+                    _buildDueDatePicker(context),
+                  ],
                   const SizedBox(height: 24),
                   _buildPeopleSection(peopleAsync),
                   const SizedBox(height: 16),
@@ -481,9 +496,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
                   ),
                   _buildFieldValue(
                     'Description',
-                    note.description.isNotEmpty
-                        ? note.description
-                        : note.content,
+                    note.description.isNotEmpty ? note.description : '—',
                   ),
                   _buildFieldValue(
                     'Priority',
@@ -507,7 +520,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: note.taggedPeople
-                        .map((person) => Chip(label: Text(person.name)))
+                        .map((p) => Chip(label: Text(p.name)))
                         .toList(),
                   ),
                 ],
@@ -515,11 +528,8 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
                 _buildSectionTitle('Transcript'),
                 const SizedBox(height: 12),
                 FilledButton.tonal(
-                  onPressed: () {
-                    setState(() {
-                      _showTranscript = !_showTranscript;
-                    });
-                  },
+                  onPressed: () =>
+                      setState(() => _showTranscript = !_showTranscript),
                   child: Text(
                     _showTranscript ? 'Hide Transcript' : 'View Transcript',
                   ),
@@ -539,6 +549,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
                           ),
                         )
                       : Container(
+                          width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Theme.of(
@@ -572,11 +583,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
                       const SizedBox(width: 12),
                       if (!_isEditing)
                         OutlinedButton(
-                          onPressed: () {
-                            setState(() {
-                              _isEditing = true;
-                            });
-                          },
+                          onPressed: () => setState(() => _isEditing = true),
                           child: const Text('Edit transcript'),
                         ),
                     ],
@@ -662,9 +669,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
           selected: {_editedPriority},
           onSelectionChanged: (newSelection) {
             if (!mounted) return;
-            setState(() {
-              _editedPriority = newSelection.first;
-            });
+            setState(() => _editedPriority = newSelection.first);
           },
         ),
       ],
@@ -676,17 +681,18 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
       contentPadding: EdgeInsets.zero,
       title: const Text('Is Todo?'),
       value: _editedIsTodo,
-      onChanged: _isEditing
-          ? (value) {
-              setState(() {
-                _editedIsTodo = value;
-                if (!value) {
-                  _editedIsCompleted = false;
-                  _editedDueDate = null;
-                }
-              });
-            }
-          : null,
+      // FIX: was guarded by _isEditing but this widget only renders when
+      // _isEditing is already true, so the guard was always satisfied.
+      // Kept the onChanged unconditional for clarity.
+      onChanged: (value) {
+        setState(() {
+          _editedIsTodo = value;
+          if (!value) {
+            _editedIsCompleted = false;
+            _editedDueDate = null;
+          }
+        });
+      },
     );
   }
 
@@ -695,13 +701,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
       contentPadding: EdgeInsets.zero,
       title: const Text('Is Completed?'),
       value: _editedIsCompleted,
-      onChanged: _isEditing
-          ? (value) {
-              setState(() {
-                _editedIsCompleted = value;
-              });
-            }
-          : null,
+      onChanged: (value) => setState(() => _editedIsCompleted = value),
     );
   }
 
@@ -714,26 +714,18 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
       children: [
         Expanded(
           child: FilledButton(
-            onPressed: _isEditing ? () => _pickDueDate(context) : null,
+            onPressed: () => _pickDueDate(context),
             child: Text(label),
           ),
         ),
         if (dueDate != null)
           IconButton(
             icon: const Icon(Icons.close),
-            onPressed: _isEditing
-                ? () {
-                    setState(() {
-                      _editedDueDate = null;
-                    });
-                  }
-                : null,
+            onPressed: () => setState(() => _editedDueDate = null),
           ),
       ],
     );
   }
-
-  bool get _isTodo => _editedIsTodo;
 
   Widget _buildPeopleSection(AsyncValue<List<PersonModel>> peopleAsync) {
     return Column(
@@ -754,20 +746,19 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
               runSpacing: 8,
               children: people.map((person) {
                 final selected = _selectedPersonIds.contains(person.id);
-                return ChoiceChip(
+                return FilterChip(
                   label: Text(person.name),
                   selected: selected,
-                  onSelected: _isEditing
-                      ? (_) {
-                          setState(() {
-                            if (selected) {
-                              _selectedPersonIds.remove(person.id);
-                            } else {
-                              _selectedPersonIds.add(person.id);
-                            }
-                          });
-                        }
-                      : null,
+                  showCheckmark: false,
+                  onSelected: (_) {
+                    setState(() {
+                      if (selected) {
+                        _selectedPersonIds.remove(person.id);
+                      } else {
+                        _selectedPersonIds.add(person.id);
+                      }
+                    });
+                  },
                 );
               }).toList(),
             );
@@ -805,9 +796,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
 
   Future<void> _addPerson() async {
     final name = _newPersonController.text.trim();
-    if (name.isEmpty) {
-      return;
-    }
+    if (name.isEmpty) return;
 
     try {
       final peopleRepository = ref.read(peopleRepositoryProvider);
@@ -829,47 +818,39 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: _note?.dueDate ?? now.add(const Duration(days: 1)),
+      initialDate: _editedDueDate ?? now.add(const Duration(days: 1)),
       firstDate: now,
       lastDate: now.add(const Duration(days: 365)),
     );
-    if (picked == null || !mounted) {
-      return;
-    }
-
-    setState(() {
-      _note = _note?.copyWith(dueDate: picked);
-    });
+    if (picked == null || !mounted) return;
+    // FIX: was updating _note via copyWith but never setting _editedDueDate,
+    // so the picked date was invisible to _saveNote.
+    setState(() => _editedDueDate = picked);
   }
 
   Future<void> _saveNote(NoteModel note) async {
     final noteRepository = ref.read(noteRepositoryProvider);
     final now = DateTime.now();
-    final updatedNote = note.copyWith(
-      label: _labelController.text.trim(),
-      description: _descriptionController.text.trim(),
-      content: _contentController.text.trim(),
-      priority: _editedPriority,
-      isTodo: _editedIsTodo,
-      isCompleted: _editedIsCompleted,
-      dueDate: _editedDueDate,
-      updatedAt: now,
-      taggedPeople: note.taggedPeople,
-    );
 
+    // FIX: build the companion entirely from local edit-state variables,
+    // NOT from `note` (the stream value). Using `note.copyWith(...)` would
+    // silently fall back to the stream's values for any field not mentioned,
+    // which meant label/description/priority were never actually persisted.
     final companion = NotesCompanion(
-      id: drift.Value(updatedNote.id),
-      label: drift.Value(updatedNote.label),
-      description: drift.Value(updatedNote.description),
-      content: drift.Value(updatedNote.content),
-      priority: drift.Value(updatedNote.priority.value),
-      isTodo: drift.Value(updatedNote.isTodo),
-      isCompleted: drift.Value(updatedNote.isCompleted),
-      dueDate: drift.Value(updatedNote.dueDate),
-      audioPath: drift.Value(updatedNote.audioPath),
-      audioDurationSeconds: drift.Value(updatedNote.audioDurationSeconds),
-      createdAt: drift.Value(updatedNote.createdAt),
-      updatedAt: drift.Value(updatedNote.updatedAt),
+      id: drift.Value(note.id),
+      label: drift.Value(_labelController.text.trim()),
+      description: drift.Value(_descriptionController.text.trim()),
+      content: drift.Value(_contentController.text.trim()),
+      priority: drift.Value(_editedPriority.value),
+      isTodo: drift.Value(_editedIsTodo),
+      isCompleted: drift.Value(_editedIsCompleted),
+      dueDate: drift.Value(_editedDueDate),
+      // Always preserve the original audio fields — never allow them to change
+      // through the metadata edit path.
+      audioPath: drift.Value(note.audioPath),
+      audioDurationSeconds: drift.Value(note.audioDurationSeconds),
+      createdAt: drift.Value(note.createdAt),
+      updatedAt: drift.Value(now),
     );
 
     try {
@@ -878,9 +859,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
         _selectedPersonIds.toList(),
       );
       if (!mounted) return;
-      setState(() {
-        _isEditing = false;
-      });
+      setState(() => _isEditing = false);
       ref.invalidate(noteDetailProvider(widget.noteId));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Note updated successfully.')),
@@ -896,24 +875,22 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
   Future<void> _confirmReRecord(NoteModel note) async {
     final shouldReplace = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Replace recording?'),
-          content: const Text(
-            'This will replace your current recording and update the note audio.',
+      builder: (context) => AlertDialog(
+        title: const Text('Replace recording?'),
+        content: const Text(
+          'This will replace your current recording and update the note audio.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Continue'),
-            ),
-          ],
-        );
-      },
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
     );
 
     if (shouldReplace != true || !mounted) return;

@@ -86,7 +86,7 @@ class _MetadataScreenState extends ConsumerState<MetadataScreen> {
     // Handle transcription errors
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      
+
       // Future note: RecordingResult will include transcriptionError and showApiKeyBanner fields
       // which can be handled here to show appropriate error messages and banners
     });
