@@ -209,9 +209,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
             child: Center(
               child: Text(
                 '5:00 max',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: Colors.white),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
           ),

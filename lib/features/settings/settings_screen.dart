@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/repositories/settings_repository.dart';
 import '../../core/services/transcription_service.dart';
 import '../../core/theme/theme_provider.dart';
+import '../../core/providers/call_vault_enabled_provider.dart';
 import '../../core/transcription/transcription_provider_config.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -22,6 +22,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   static const _callsChannel = MethodChannel('voiceon/calls');
   bool _callVaultEnabled = false;
   String? _callVaultFolderUri;
+  String? _detectedFolderPath;
 
   // ── AI Transcription state ───────────────────────────────────────────────
   late TextEditingController _apiKeyController;
@@ -48,10 +49,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       final folderUri = await _callsChannel.invokeMethod<String?>(
         'getCallVaultFolderUri',
       );
+      String? detectedPath;
+      if (enabled && folderUri == null) {
+        try {
+          detectedPath = await _callsChannel.invokeMethod<String?>(
+            'autoDetectRecordingsFolder',
+          );
+        } catch (_) {
+          detectedPath = null;
+        }
+      }
       if (mounted) {
         setState(() {
           _callVaultEnabled = enabled;
           _callVaultFolderUri = folderUri;
+          _detectedFolderPath = detectedPath;
         });
       }
     } catch (_) {}
@@ -70,6 +82,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     try {
       await _callsChannel.invokeMethod('setCallVaultEnabled', newValue);
+      ref.invalidate(callVaultEnabledProvider);
       if (mounted) setState(() => _callVaultEnabled = newValue);
     } catch (_) {}
   }
@@ -89,7 +102,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('⚠️ Legal Notice'),
         content: const SingleChildScrollView(
           child: Text(
@@ -104,11 +117,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('I Understand, Enable'),
           ),
         ],
@@ -235,6 +248,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         action: SnackBarAction(label: 'OK', onPressed: () {}),
       ),
     );
+  }
+
+  String _formatFolderUri(String uri) {
+    try {
+      final decoded = Uri.decodeFull(uri);
+      final colonIdx = decoded.lastIndexOf(':');
+      if (colonIdx != -1 && colonIdx < decoded.length - 1) {
+        final path = decoded.substring(colonIdx + 1);
+        final parts = path.split('/').where((p) => p.isNotEmpty).toList();
+        return parts.join(' › ');
+      }
+      return decoded;
+    } catch (_) {
+      return uri;
+    }
+  }
+
+  String _formatDetectedPath(String absPath) {
+    const marker = '/0/';
+    final idx = absPath.indexOf(marker);
+    if (idx != -1) {
+      final rel = absPath.substring(idx + marker.length);
+      return rel.split('/').where((p) => p.isNotEmpty).join(' › ');
+    }
+    return absPath.split('/').where((p) => p.isNotEmpty).join(' › ');
   }
 
   void _clearApiKey() {
@@ -374,6 +412,53 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
             if (_callVaultEnabled) ...[
               const SizedBox(height: 10),
+              if (_callVaultFolderUri == null &&
+                  _detectedFolderPath != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withAlpha(30),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.teal.withAlpha(80)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.folder_special,
+                            color: Colors.teal,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Possible recordings folder found: 📁 ${_formatDetectedPath(_detectedFolderPath!)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Tap below to grant Voiceon access to this folder.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      const SizedBox(height: 10),
+                      FilledButton.tonal(
+                        onPressed: _pickFolder,
+                        child: const Text('Grant Access to This Folder'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
               Card(
                 margin: EdgeInsets.zero,
                 shadowColor: Colors.transparent,
@@ -381,7 +466,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   title: const Text('Phone Recordings Folder'),
                   subtitle: Text(
                     _callVaultFolderUri != null
-                        ? _callVaultFolderUri!.split('%3A').last
+                        ? '📁 ${_formatFolderUri(_callVaultFolderUri!)}'
                         : 'Required — tap to select your Phone app\'s recordings folder',
                     style: TextStyle(
                       color: _callVaultFolderUri == null
@@ -459,16 +544,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ],
               const SizedBox(height: 12),
-              Card(
-                margin: EdgeInsets.zero,
-                shadowColor: Colors.transparent,
-                child: ListTile(
-                  leading: const Icon(Icons.list_alt),
-                  title: const Text('Open Call Vault'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/call-vault'),
-                ),
-              ),
             ],
 
             const SizedBox(height: 32),
@@ -613,9 +688,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     icon: const Icon(Icons.open_in_new, size: 16),
                     label: const Text('Get API Key'),
                   ),
-                  ElevatedButton(
+                  FilledButton.tonal(
                     onPressed: _isTesting ? null : _testConnection,
-                    style: ButtonStyle(elevation: WidgetStatePropertyAll(0.0)),
                     child: _isTesting
                         ? const SizedBox(
                             height: 20,

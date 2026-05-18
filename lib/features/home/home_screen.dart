@@ -58,7 +58,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             snap: false,
             title: const Text('Voiceon'),
             actions: [
-              // Filter icon — badge shows when any filter is active
               Stack(
                 alignment: Alignment.center,
                 children: [
@@ -81,11 +80,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                 ],
-              ),
-              IconButton(
-                icon: const Icon(Icons.settings_outlined),
-                tooltip: 'Settings',
-                onPressed: () => context.push('/settings'),
               ),
             ],
           ),
@@ -157,7 +151,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                         if (filters.hasFilters) ...[
                           const SizedBox(height: 16),
-                          FilledButton(
+                          FilledButton.tonal(
                             onPressed: filterNotifier.clearFilters,
                             child: const Text('Clear filters'),
                           ),
@@ -196,11 +190,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
           const SliverToBoxAdapter(child: SizedBox(height: 96)),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        icon: const Icon(Icons.mic),
-        label: const Text('New note'),
-        onPressed: () => context.push('/record'),
       ),
     );
   }

@@ -178,6 +178,86 @@ class MainActivity : FlutterActivity() {
                         result.error("COPY_ERROR", e.message, null)
                     }
                 }
+                "autoDetectRecordingsFolder" -> {
+                    val candidates = listOf(
+                        // ── Samsung ──────────────────────────────────────────────────────
+                        "Recordings/Call",
+                        "Call recordings",
+                        "Recordings",
+                        "Samsung/Call Recordings",
+
+                        // ── Xiaomi / MIUI / HyperOS ──────────────────────────────────────
+                        "MIUI/sound_recorder/call_rec",
+                        "recordings/call",
+                        "Sounds/callrecord",
+                        "Record/Call",
+
+                        // ── Oppo / ColorOS ───────────────────────────────────────────────
+                        "ColorOS/PhoneRecord",
+                        "Recordings/PhoneRecord",
+                        "OPPO/PhoneRecord",
+
+                        // ── Vivo / Funtouch OS / OriginOS ──────────────────────────────────
+                        "record/callrecord",
+                        "Recordings/CallRecord",
+                        "vivo/call",
+
+                        // ── Realme / Realme UI ─────────────────────────────────────────────
+                        "Recordings/Call",
+                        "realme/PhoneRecord",
+
+                        // ── Huawei / Honor / EMUI ─────────────────────────────────────────
+                        "Sounds/callrecord",
+                        "PhoneRecord",
+                        "Recordings/PhoneRecord",
+                        "CallRecording",
+
+                        // ── OnePlus / OxygenOS / ColorOS ─────────────────────────────────
+                        "CallRecordings",
+                        "Recordings/Call",
+
+                        // ── Nokia / HMD (Android One/stock-ish) ──────────────────────────
+                        "PhoneRecord",
+                        "Recordings",
+
+                        // ── Motorola (near-stock Android) ────────────────────────────────
+                        "Recordings",
+                        "Call Recordings",
+
+                        // ── Sony Xperia ──────────────────────────────────────────────────
+                        "Sounds/callrecord",
+                        "PhoneRecord",
+
+                        // ── Google Pixel (Google Phone app) ──────────────────────────────
+                        "Recordings",
+
+                        // ── LG (legacy, no longer made but users exist) ──────────────────
+                        "LG/Call",
+                        "PhoneRecord",
+
+                        // ── Generic / Unknown ─────────────────────────────────────────────
+                        "PhoneRecord",
+                        "CallRecords",
+                        "call_recordings",
+                        "call_records",
+                    )
+
+                    val externalStorage = android.os.Environment.getExternalStorageDirectory()
+
+                    val found = candidates
+                        .distinctBy { it.lowercase() }
+                        .firstOrNull { relativePath ->
+                            val dir = java.io.File(externalStorage, relativePath)
+                            dir.exists() && dir.isDirectory
+                        }
+
+                    if (found != null) {
+                        val dir = java.io.File(externalStorage, found)
+                        result.success(dir.absolutePath)
+                    } else {
+                        result.success(null)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

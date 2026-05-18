@@ -29,16 +29,16 @@ class CallTranscriptionResult {
   });
 
   const CallTranscriptionResult.noProvider()
-      : success = false,
-        rawText = '',
-        utterances = const [],
-        errorMessage = 'No AI provider configured';
+    : success = false,
+      rawText = '',
+      utterances = const [],
+      errorMessage = 'No AI provider configured';
 
   const CallTranscriptionResult.failed(String message)
-      : success = false,
-        rawText = '',
-        utterances = const [],
-        errorMessage = message;
+    : success = false,
+      rawText = '',
+      utterances = const [],
+      errorMessage = message;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -134,7 +134,11 @@ class CallTranscriptionService {
     final rawText = (decoded['text'] as String? ?? '').trim();
 
     // Post-process with LLM for diarization
-    final diarizedJson = await _postProcessDiarization(AiProvider.groq, apiKey, rawText);
+    final diarizedJson = await _postProcessDiarization(
+      AiProvider.groq,
+      apiKey,
+      rawText,
+    );
     final utterances = _parseUtterancesFromJson(diarizedJson);
 
     return CallTranscriptionResult(
@@ -190,7 +194,11 @@ class CallTranscriptionService {
     final rawText = (decoded['text'] as String? ?? '').trim();
 
     // Post-process with LLM for diarization
-    final diarizedJson = await _postProcessDiarization(AiProvider.openai, apiKey, rawText);
+    final diarizedJson = await _postProcessDiarization(
+      AiProvider.openai,
+      apiKey,
+      rawText,
+    );
     final utterances = _parseUtterancesFromJson(diarizedJson);
 
     return CallTranscriptionResult(
@@ -220,13 +228,14 @@ class CallTranscriptionService {
       model = 'gpt-4o-mini';
     }
 
-    final prompt = 'You are an AI tasked with diarizing a phone call transcript.\n'
+    final prompt =
+        'You are an AI tasked with diarizing a phone call transcript.\n'
         '$_callDiarizationPrompt\n\n'
         'Here is the raw text transcript to diarize:\n\n'
         '$plainText';
 
     debugPrint('--- SENDING LLM DIARIZATION REQUEST (${provider.name}) ---');
-    
+
     final response = await http.post(
       Uri.parse(endpoint),
       headers: {
@@ -238,25 +247,26 @@ class CallTranscriptionService {
         'messages': [
           {
             'role': 'system',
-            'content': 'You are a helpful assistant that outputs only raw JSON arrays.'
+            'content':
+                'You are a helpful assistant that outputs only raw JSON arrays.',
           },
-          {
-            'role': 'user',
-            'content': prompt
-          },
+          {'role': 'user', 'content': prompt},
         ],
         'temperature': 0.1,
       }),
     );
 
     if (response.statusCode != 200) {
-      debugPrint('LLM Diarization failed: ${response.statusCode} - ${response.body}');
+      debugPrint(
+        'LLM Diarization failed: ${response.statusCode} - ${response.body}',
+      );
       return plainText; // gracefully degrade to plain text
     }
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final content = json['choices']?[0]?['message']?['content'] as String? ?? '';
-    
+    final content =
+        json['choices']?[0]?['message']?['content'] as String? ?? '';
+
     debugPrint('--- LLM DIARIZATION RESPONSE ---');
     debugPrint(content);
     debugPrint('--------------------------------');
@@ -277,7 +287,7 @@ class CallTranscriptionService {
 
     // Step 1: Upload
     final fileBytes = await file.readAsBytes();
-    
+
     debugPrint('--- UPLOADING TO ASSEMBLYAI ---');
     debugPrint('URL: https://api.assemblyai.com/v2/upload');
 
@@ -291,7 +301,9 @@ class CallTranscriptionService {
     );
 
     if (uploadResponse.statusCode != 200) {
-      throw Exception('AssemblyAI upload failed: HTTP ${uploadResponse.statusCode}');
+      throw Exception(
+        'AssemblyAI upload failed: HTTP ${uploadResponse.statusCode}',
+      );
     }
 
     final uploadUrl = (jsonDecode(uploadResponse.body))['upload_url'] as String;
@@ -301,7 +313,7 @@ class CallTranscriptionService {
       'audio_url': uploadUrl,
       'language_detection': true,
       'speaker_labels': true,
-      'speech_threshold': 0.2,
+      'speech_models': ['universal-3-pro', 'universal-2'],
     });
 
     debugPrint('--- SUBMITTING TO ASSEMBLYAI ---');
@@ -311,15 +323,16 @@ class CallTranscriptionService {
 
     final submitResponse = await http.post(
       Uri.parse('https://api.assemblyai.com/v2/transcript'),
-      headers: {
-        'Authorization': apiKey,
-        'Content-Type': 'application/json',
-      },
+      headers: {'Authorization': apiKey, 'Content-Type': 'application/json'},
       body: bodyJson,
     );
 
     if (submitResponse.statusCode != 200) {
-      throw Exception('AssemblyAI submit failed: HTTP ${submitResponse.statusCode}');
+      debugPrint('AssemblyAI submit failed: HTTP ${submitResponse.statusCode}');
+      debugPrint('AssemblyAI submit response body: ${submitResponse.body}');
+      throw Exception(
+        'AssemblyAI submit failed: HTTP ${submitResponse.statusCode} - ${submitResponse.body}',
+      );
     }
 
     final jobId = (jsonDecode(submitResponse.body))['id'] as String;
@@ -334,10 +347,13 @@ class CallTranscriptionService {
       );
 
       if (statusResponse.statusCode != 200) {
-        throw Exception('AssemblyAI poll failed: HTTP ${statusResponse.statusCode}');
+        throw Exception(
+          'AssemblyAI poll failed: HTTP ${statusResponse.statusCode}',
+        );
       }
 
-      final statusJson = jsonDecode(statusResponse.body) as Map<String, dynamic>;
+      final statusJson =
+          jsonDecode(statusResponse.body) as Map<String, dynamic>;
       final status = statusJson['status'] as String;
 
       if (status == 'completed') {
@@ -354,17 +370,18 @@ class CallTranscriptionService {
             final u = utterancesRaw[idx] as Map<String, dynamic>;
             final rawSpeaker = (u['speaker'] as String? ?? 'A').toUpperCase();
             if (!speakerMap.containsKey(rawSpeaker)) {
-              speakerMap[rawSpeaker] =
-                  'person_${speakerMap.length + 1}';
+              speakerMap[rawSpeaker] = 'person_${speakerMap.length + 1}';
             }
-            utterances.add(CallUtterance(
-              id: const Uuid().v4(),
-              callId: '',
-              speaker: speakerMap[rawSpeaker]!,
-              text: (u['text'] as String? ?? '').trim(),
-              startMs: u['start'] as int?,
-              sequence: idx,
-            ));
+            utterances.add(
+              CallUtterance(
+                id: const Uuid().v4(),
+                callId: '',
+                speaker: speakerMap[rawSpeaker]!,
+                text: (u['text'] as String? ?? '').trim(),
+                startMs: u['start'] as int?,
+                sequence: idx,
+              ),
+            );
           }
         }
 
@@ -395,7 +412,8 @@ class CallTranscriptionService {
 
     final fileBytes = await file.readAsBytes();
 
-    final url = 'https://api.deepgram.com/v1/listen'
+    final url =
+        'https://api.deepgram.com/v1/listen'
         '?model=nova-2'
         '&smart_format=true'
         '&detect_language=true'
@@ -408,10 +426,7 @@ class CallTranscriptionService {
 
     final response = await http.post(
       Uri.parse(url),
-      headers: {
-        'Authorization': 'Token $apiKey',
-        'Content-Type': 'audio/mp4',
-      },
+      headers: {'Authorization': 'Token $apiKey', 'Content-Type': 'audio/mp4'},
       body: fileBytes,
     );
 
@@ -422,14 +437,15 @@ class CallTranscriptionService {
     final json = jsonDecode(response.body) as Map<String, dynamic>;
 
     // Plain text from the first channel alternative
-    final rawText = (json['results']?['channels']?[0]?['alternatives']?[0]
-            ?['transcript'] as String? ??
-        '').trim();
+    final rawText =
+        (json['results']?['channels']?[0]?['alternatives']?[0]?['transcript']
+                    as String? ??
+                '')
+            .trim();
 
     // Parse utterances array: [{speaker: 0, transcript: "..."}, ...]
     final List<CallUtterance> utterances = [];
-    final utterancesRaw =
-        json['results']?['utterances'] as List<dynamic>?;
+    final utterancesRaw = json['results']?['utterances'] as List<dynamic>?;
 
     if (utterancesRaw != null && utterancesRaw.isNotEmpty) {
       final speakerMap = <int, String>{};
@@ -439,14 +455,16 @@ class CallTranscriptionService {
         if (!speakerMap.containsKey(speakerNum)) {
           speakerMap[speakerNum] = 'person_${speakerMap.length + 1}';
         }
-        utterances.add(CallUtterance(
-          id: const Uuid().v4(),
-          callId: '',
-          speaker: speakerMap[speakerNum]!,
-          text: (u['transcript'] as String? ?? '').trim(),
-          startMs: ((u['start'] as num?)?.toDouble() ?? 0.0 * 1000).toInt(),
-          sequence: idx,
-        ));
+        utterances.add(
+          CallUtterance(
+            id: const Uuid().v4(),
+            callId: '',
+            speaker: speakerMap[speakerNum]!,
+            text: (u['transcript'] as String? ?? '').trim(),
+            startMs: ((u['start'] as num?)?.toDouble() ?? 0.0 * 1000).toInt(),
+            sequence: idx,
+          ),
+        );
       }
     }
 
@@ -489,7 +507,9 @@ class CallTranscriptionService {
     final uploadBody = await uploadResponse.stream.bytesToString();
 
     if (uploadResponse.statusCode != 201) {
-      throw Exception('Rev.ai job creation failed: HTTP ${uploadResponse.statusCode}');
+      throw Exception(
+        'Rev.ai job creation failed: HTTP ${uploadResponse.statusCode}',
+      );
     }
 
     final jobId = (jsonDecode(uploadBody))['id'] as String;
@@ -504,10 +524,13 @@ class CallTranscriptionService {
       );
 
       if (statusResponse.statusCode != 200) {
-        throw Exception('Rev.ai poll failed: HTTP ${statusResponse.statusCode}');
+        throw Exception(
+          'Rev.ai poll failed: HTTP ${statusResponse.statusCode}',
+        );
       }
 
-      final statusJson = jsonDecode(statusResponse.body) as Map<String, dynamic>;
+      final statusJson =
+          jsonDecode(statusResponse.body) as Map<String, dynamic>;
       final status = statusJson['status'] as String;
 
       if (status == 'transcribed') {
@@ -562,17 +585,17 @@ class CallTranscriptionService {
 
           final text = turnText.toString().trim();
           if (text.isNotEmpty) {
-            rawParts.add(
-              '${speakerMap[speakerNum]}: $text',
+            rawParts.add('${speakerMap[speakerNum]}: $text');
+            utterances.add(
+              CallUtterance(
+                id: const Uuid().v4(),
+                callId: '',
+                speaker: speakerMap[speakerNum]!,
+                text: text,
+                startMs: firstStartMs,
+                sequence: utterances.length,
+              ),
             );
-            utterances.add(CallUtterance(
-              id: const Uuid().v4(),
-              callId: '',
-              speaker: speakerMap[speakerNum]!,
-              text: text,
-              startMs: firstStartMs,
-              sequence: utterances.length,
-            ));
           }
         }
 
@@ -582,9 +605,7 @@ class CallTranscriptionService {
           utterances: utterances,
         );
       } else if (status == 'failed') {
-        throw Exception(
-          'Rev.ai failed: ${statusJson['failure_detail']}',
-        );
+        throw Exception('Rev.ai failed: ${statusJson['failure_detail']}');
       }
     }
 
@@ -628,24 +649,30 @@ class CallTranscriptionService {
 
       final list = jsonDecode(clean) as List<dynamic>;
 
-      return list.asMap().entries.map((entry) {
-        final map = entry.value as Map<String, dynamic>;
-        final rawBy = (map['by'] as String? ?? 'person_1').toLowerCase().trim();
-        // Normalize: accept "person1", "speaker_1", "a", "1" → "person_1"
-        final speaker = (rawBy.contains('2') || rawBy == 'b' || rawBy == 'person_2')
-            ? 'person_2'
-            : 'person_1';
-        return CallUtterance(
-          id: const Uuid().v4(),
-          callId: '', // filled in by caller
-          speaker: speaker,
-          text: (map['text'] as String? ?? '').trim(),
-          startMs: (map['start_ms'] as num?)?.toInt(),
-          sequence: entry.key,
-        );
-      })
-      .where((u) => u.text.isNotEmpty) // skip empty utterances
-      .toList();
+      return list
+          .asMap()
+          .entries
+          .map((entry) {
+            final map = entry.value as Map<String, dynamic>;
+            final rawBy = (map['by'] as String? ?? 'person_1')
+                .toLowerCase()
+                .trim();
+            // Normalize: accept "person1", "speaker_1", "a", "1" → "person_1"
+            final speaker =
+                (rawBy.contains('2') || rawBy == 'b' || rawBy == 'person_2')
+                ? 'person_2'
+                : 'person_1';
+            return CallUtterance(
+              id: const Uuid().v4(),
+              callId: '', // filled in by caller
+              speaker: speaker,
+              text: (map['text'] as String? ?? '').trim(),
+              startMs: (map['start_ms'] as num?)?.toInt(),
+              sequence: entry.key,
+            );
+          })
+          .where((u) => u.text.isNotEmpty) // skip empty utterances
+          .toList();
     } catch (_) {
       return [];
     }
@@ -658,6 +685,6 @@ class CallTranscriptionService {
 
 final callTranscriptionServiceProvider =
     FutureProvider<CallTranscriptionService>((ref) async {
-  final settingsRepo = await ref.watch(settingsRepositoryProvider.future);
-  return CallTranscriptionService(settingsRepo);
-});
+      final settingsRepo = await ref.watch(settingsRepositoryProvider.future);
+      return CallTranscriptionService(settingsRepo);
+    });

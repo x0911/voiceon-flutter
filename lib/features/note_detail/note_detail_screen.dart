@@ -587,7 +587,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
                       ),
                       const SizedBox(width: 12),
                       if (!_isEditing)
-                        OutlinedButton(
+                        FilledButton.tonal(
                           onPressed: () => setState(() => _isEditing = true),
                           child: const Text('Edit transcript'),
                         ),

@@ -6,7 +6,7 @@ import '../../core/models/person.dart';
 
 class NoteCard extends StatelessWidget {
   final NoteModel note;
-  final ValueChanged<bool>? onToggleCompleted;
+  final Future<bool> Function(bool)? onToggleCompleted;
   final VoidCallback? onTap;
 
   const NoteCard({
@@ -36,7 +36,7 @@ class NoteCard extends StatelessWidget {
     final borderColor = Theme.of(context).colorScheme.onSurface.withAlpha(20);
     final accentColor = _priorityColor(note.priority);
 
-    return InkWell(
+    final cardContent = InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
@@ -158,6 +158,36 @@ class NoteCard extends StatelessWidget {
         ),
       ),
     );
+
+    if (!note.isTodo || onToggleCompleted == null) {
+      return cardContent;
+    }
+
+    final direction = note.isCompleted
+        ? DismissDirection.endToStart
+        : DismissDirection.startToEnd;
+
+    return Dismissible(
+      key: ValueKey('${note.id}_${note.isCompleted}'),
+      direction: direction,
+      confirmDismiss: (dir) async {
+        await onToggleCompleted!(!note.isCompleted);
+        return false;
+      },
+      background: _SwipeBackground(
+        alignment: Alignment.centerLeft,
+        color: Colors.green.shade400,
+        icon: Icons.check_rounded,
+        label: 'Complete',
+      ),
+      secondaryBackground: _SwipeBackground(
+        alignment: Alignment.centerRight,
+        color: Colors.amber.shade600,
+        icon: Icons.undo_rounded,
+        label: 'Undo',
+      ),
+      child: cardContent,
+    );
   }
 
   String _formatDueText(DateTime? dueDate) {
@@ -258,6 +288,60 @@ class _TaggedPeopleRow extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _SwipeBackground extends StatelessWidget {
+  final AlignmentGeometry alignment;
+  final Color color;
+  final IconData icon;
+  final String label;
+
+  const _SwipeBackground({
+    required this.alignment,
+    required this.color,
+    required this.icon,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isLeft = alignment == Alignment.centerLeft;
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      alignment: alignment,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: isLeft
+            ? [
+                Icon(icon, color: Colors.white, size: 22),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ]
+            : [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(icon, color: Colors.white, size: 22),
+              ],
+      ),
     );
   }
 }

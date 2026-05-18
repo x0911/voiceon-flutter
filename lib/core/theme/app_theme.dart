@@ -19,7 +19,7 @@ class AppTheme {
       surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
       blendLevel: 9,
       visualDensity: FlexColorScheme.comfortablePlatformDensity,
-      appBarStyle: FlexAppBarStyle.primary,
+      appBarStyle: FlexAppBarStyle.surface,
       subThemesData: const FlexSubThemesData(inputDecoratorRadius: 16),
       useMaterial3: true,
       fontFamily: GoogleFonts.openSans().fontFamily,
@@ -39,15 +39,22 @@ class AppTheme {
         ),
       ),
       appBarTheme: base.appBarTheme.copyWith(
+        backgroundColor: base.colorScheme.surfaceContainerHigh,
+        foregroundColor: base.colorScheme.onSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 2,
         titleTextStyle: GoogleFonts.openSans(
           fontSize: 20,
           fontWeight: FontWeight.w600,
-          color: base.colorScheme.onPrimary,
+          color: base.colorScheme.onSurface,
         ),
         toolbarTextStyle: GoogleFonts.openSans(
           fontSize: 14,
-          color: base.colorScheme.onPrimary,
+          color: base.colorScheme.onSurface,
         ),
+        iconTheme: IconThemeData(color: base.colorScheme.onSurface),
+        actionsIconTheme: IconThemeData(color: base.colorScheme.onSurface),
       ),
     );
   }
@@ -63,7 +70,7 @@ class AppTheme {
       surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
       blendLevel: 15,
       visualDensity: FlexColorScheme.comfortablePlatformDensity,
-      appBarStyle: FlexAppBarStyle.primary,
+      appBarStyle: FlexAppBarStyle.surface,
       subThemesData: const FlexSubThemesData(inputDecoratorRadius: 16),
       useMaterial3: true,
       fontFamily: GoogleFonts.openSans().fontFamily,
@@ -83,15 +90,22 @@ class AppTheme {
         ),
       ),
       appBarTheme: base.appBarTheme.copyWith(
+        backgroundColor: base.colorScheme.surfaceContainerHigh,
+        foregroundColor: base.colorScheme.onSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 2,
         titleTextStyle: GoogleFonts.openSans(
           fontSize: 20,
           fontWeight: FontWeight.w600,
-          color: base.colorScheme.onPrimary,
+          color: base.colorScheme.onSurface,
         ),
         toolbarTextStyle: GoogleFonts.openSans(
           fontSize: 14,
-          color: base.colorScheme.onPrimary,
+          color: base.colorScheme.onSurface,
         ),
+        iconTheme: IconThemeData(color: base.colorScheme.onSurface),
+        actionsIconTheme: IconThemeData(color: base.colorScheme.onSurface),
       ),
     );
   }
