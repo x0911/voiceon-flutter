@@ -9,6 +9,7 @@ import '../transcription/providers/openai_transcription.dart';
 import '../transcription/providers/assemblyai_transcription.dart';
 import '../transcription/providers/deepgram_transcription.dart';
 import '../transcription/providers/revai_transcription.dart';
+import '../transcription/providers/whisperx_transcription.dart';
 
 class TranscriptionService {
   final SettingsRepository _settings;
@@ -22,11 +23,15 @@ class TranscriptionService {
     }
 
     try {
+      final timeout = config.provider == AiProvider.whisperx
+          ? const Duration(seconds: 180)  // 3 minutes for local WhisperX
+          : const Duration(seconds: 60);  // 1 minute for cloud APIs
+
       final text = await _transcribeWithProvider(
         config.provider!,
         config.apiKey,
         audioPath,
-      ).timeout(const Duration(seconds: 300)); // 5 minutes
+      ).timeout(timeout);
       return TranscriptionResult.success(text);
     } on TimeoutException {
       return const TranscriptionResult.timeout();
@@ -51,6 +56,13 @@ class TranscriptionService {
         return await deepgramTranscribe(audioPath, apiKey);
       case AiProvider.revai:
         return await revaiTranscribe(audioPath, apiKey);
+      case AiProvider.whisperx:
+        final endpoint = await _settings.getWhisperXEndpoint();
+        return await WhisperXTranscription().transcribe(
+          audioPath,
+          apiKey,
+          endpoint,
+        );
     }
   }
 
@@ -81,6 +93,8 @@ class TranscriptionService {
         return _testDeepgramConnection(apiKey);
       case AiProvider.revai:
         return _testRevaibConnection(apiKey);
+      case AiProvider.whisperx:
+        return _testWhisperXConnection(apiKey);
     }
   }
 
@@ -125,6 +139,20 @@ class TranscriptionService {
         Uri.parse('https://api.rev.ai/speechtotext/v1/jobs'),
         headers: {'Authorization': 'Bearer $apiKey'},
       );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _testWhisperXConnection(String apiKey) async {
+    final endpoint = await _settings.getWhisperXEndpoint();
+    if (endpoint.isEmpty) return false;
+    try {
+      final response = await http.get(
+        Uri.parse('$endpoint/health'),
+        headers: {'Authorization': 'Bearer $apiKey'},
+      ).timeout(const Duration(seconds: 10));
       return response.statusCode == 200;
     } catch (_) {
       return false;

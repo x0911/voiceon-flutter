@@ -26,8 +26,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   // ── AI Transcription state ───────────────────────────────────────────────
   late TextEditingController _apiKeyController;
+  late TextEditingController _endpointController;
   AiProvider? _selectedProvider;
   bool _showApiKey = false;
+  bool _showBaseEndpoint = false;
   bool _isTesting = false;
   String? _testResult;
   bool _testSuccess = false;
@@ -36,6 +38,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void initState() {
     super.initState();
     _apiKeyController = TextEditingController();
+    _endpointController = TextEditingController();
     _loadSettings();
     _loadCallVaultEnabled();
   }
@@ -144,10 +147,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final apiKey = provider != null
         ? await settingsRepo.getApiKey(provider)
         : '';
+    final endpoint = await settingsRepo.getWhisperXEndpoint();
     if (mounted) {
       setState(() {
         _selectedProvider = provider;
         _apiKeyController.text = apiKey;
+        _endpointController.text = provider == AiProvider.whisperx
+            ? endpoint
+            : '';
       });
     }
   }
@@ -156,10 +163,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final settingsRepo = await ref.read(settingsRepositoryProvider.future);
     await settingsRepo.setSelectedProvider(provider);
     final apiKey = await settingsRepo.getApiKey(provider);
+    final savedEndpoint = provider == AiProvider.whisperx
+        ? await settingsRepo.getWhisperXEndpoint()
+        : '';
     if (mounted) {
       setState(() {
         _selectedProvider = provider;
         _apiKeyController.text = apiKey;
+        _endpointController.text = savedEndpoint;
         _testResult = null;
         _testSuccess = false;
       });
@@ -170,6 +181,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (_selectedProvider == null) return;
     final settingsRepo = await ref.read(settingsRepositoryProvider.future);
     await settingsRepo.setApiKey(_selectedProvider!, key);
+    if (mounted) {
+      setState(() {
+        _testResult = null;
+        _testSuccess = false;
+      });
+    }
+  }
+
+  Future<void> _saveEndpoint(String endpoint) async {
+    if (_selectedProvider == null) return;
+    final settingsRepo = await ref.read(settingsRepositoryProvider.future);
+    await settingsRepo.setWhisperXEndpoint(endpoint);
     if (mounted) {
       setState(() {
         _testResult = null;
@@ -284,9 +307,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     });
   }
 
+  void _clearEndpoint() {
+    _endpointController.clear();
+    _saveEndpoint('');
+    setState(() {
+      _testResult = null;
+      _testSuccess = false;
+    });
+  }
+
   @override
   void dispose() {
     _apiKeyController.dispose();
+    _endpointController.dispose();
     super.dispose();
   }
 
@@ -568,7 +601,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 return DropdownMenuItem(
                   value: provider,
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Flexible(
                         child: Text(
@@ -576,46 +609,53 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (provider.hasFreeier) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.green,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'FREE',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                      if (provider.isRecommended) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'RECOMMENDED',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                      if (provider.hasFreeier || provider.isRecommended) ...[
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (provider.isRecommended) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'Recommended',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            if (provider.hasFreeier) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'Free',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ],
@@ -634,6 +674,63 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
               ),
               const SizedBox(height: 16),
+            ],
+
+            // Show Base Endpoint field ONLY for WhisperX
+            if (_selectedProvider == AiProvider.whisperx) ...[
+              TextFormField(
+                controller: _endpointController,
+                obscureText: !_showBaseEndpoint,
+                keyboardType: TextInputType.url,
+                autocorrect: false,
+                decoration: InputDecoration(
+                  labelText: 'Base Endpoint',
+                  hintText: 'https://abc123.ngrok-free.app',
+                  helperText: 'Your ngrok HTTPS URL (no trailing slash)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  suffixIconConstraints: const BoxConstraints(
+                    minWidth: 0,
+                    minHeight: 0,
+                  ),
+                  suffixIcon: Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            _showBaseEndpoint
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            size: 20,
+                          ),
+                          onPressed: () => setState(
+                            () => _showBaseEndpoint = !_showBaseEndpoint,
+                          ),
+                        ),
+                        if (_endpointController.text.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.clear, size: 20),
+                            onPressed: _clearEndpoint,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                onChanged: (value) async {
+                  final settingsRepo = await ref.read(
+                    settingsRepositoryProvider.future,
+                  );
+                  await settingsRepo.setWhisperXEndpoint(value);
+                  setState(() {
+                    _testResult = null;
+                    _testSuccess = false;
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
             ],
 
             if (_selectedProvider != null) ...[

@@ -36,6 +36,15 @@ class SettingsRepository {
     final apiKey = await getApiKey(provider);
     return (provider: provider, apiKey: apiKey);
   }
+
+  // WhisperX custom base endpoint (e.g. https://abc123.ngrok-free.app)
+  Future<String> getWhisperXEndpoint() async {
+    return _prefs.getString('whisperx_endpoint') ?? '';
+  }
+
+  Future<void> setWhisperXEndpoint(String endpoint) async {
+    await _prefs.setString('whisperx_endpoint', endpoint.trim().replaceAll(RegExp(r'/+$'), ''));
+  }
 }
 
 final settingsRepositoryProvider = FutureProvider<SettingsRepository>((

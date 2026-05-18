@@ -6,7 +6,7 @@ enum AiProvider {
     apiKeyHint: 'gsk_...',
     apiKeyUrl: 'https://console.groq.com/keys',
     hasFreeier: true,
-    isRecommended: true,
+    isRecommended: false,
     description: 'Fast & free. Uses Whisper large-v3 model.',
   ),
   openai(
@@ -48,6 +48,16 @@ enum AiProvider {
     hasFreeier: true,
     isRecommended: false,
     description: '5 free hours trial.',
+  ),
+  whisperx(
+    id: 'whisperx',
+    displayName: 'Custom WhisperX',
+    apiKeyLabel: 'API Key',
+    apiKeyHint: 'The key you set in your WhisperX server',
+    apiKeyUrl: 'https://github.com/m-bain/whisperx',
+    hasFreeier: true,
+    isRecommended: false,
+    description: 'Your own WhisperX server with speaker diarization.',
   );
 
   const AiProvider({

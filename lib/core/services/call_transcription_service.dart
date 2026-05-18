@@ -57,11 +57,15 @@ class CallTranscriptionService {
     }
 
     try {
+      final timeout = config.provider == AiProvider.whisperx
+          ? const Duration(seconds: 180)
+          : const Duration(seconds: 90);
+
       return await _transcribeWithProvider(
         config.provider!,
         config.apiKey,
         audioPath,
-      ).timeout(const Duration(seconds: 90));
+      ).timeout(timeout);
     } on TimeoutException {
       return const CallTranscriptionResult.failed('Transcription timed out');
     } catch (e) {
@@ -85,6 +89,8 @@ class CallTranscriptionService {
         return _transcribeDeepgram(audioPath, apiKey);
       case AiProvider.revai:
         return _transcribeRevAI(audioPath, apiKey);
+      case AiProvider.whisperx:
+        return _transcribeWhisperX(audioPath, apiKey);
     }
   }
 
@@ -676,6 +682,112 @@ class CallTranscriptionService {
     } catch (_) {
       return [];
     }
+  }
+
+  // ── WhisperX (Local) ──────────────────────────────────────────────────────
+
+  Future<CallTranscriptionResult> _transcribeWhisperX(
+    String audioPath,
+    String apiKey,
+  ) async {
+    final endpoint = await _settings.getWhisperXEndpoint();
+    if (endpoint.isEmpty) {
+      throw Exception(
+        'WhisperX endpoint is not configured. '
+        'Go to Settings → AI Transcription and enter your Base Endpoint.',
+      );
+    }
+
+    final file = File(audioPath);
+    if (!file.existsSync()) {
+      throw Exception('Audio file not found at $audioPath');
+    }
+
+    final uri = Uri.parse('$endpoint/transcribe').replace(
+      queryParameters: {'diarize': 'true'},
+    ); // enable speaker diarization for calls
+    final request = http.MultipartRequest('POST', uri);
+    request.headers['Authorization'] = 'Bearer $apiKey';
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'file',
+        audioPath,
+        filename: '${DateTime.now().millisecondsSinceEpoch}.m4a',
+      ),
+    );
+
+    debugPrint('--- SENDING TRANSCRIPTION REQUEST (WhisperX) ---');
+    debugPrint('URL: $uri');
+    debugPrint('------------------------------------------------');
+
+    final streamedResponse = await request.send().timeout(
+      const Duration(seconds: 120),
+    );
+    final body = await streamedResponse.stream.bytesToString();
+
+    debugPrint('--- AI RESPONSE (WhisperX) ---');
+    debugPrint(body);
+    debugPrint('------------------------------');
+
+    if (streamedResponse.statusCode == 401 ||
+        streamedResponse.statusCode == 403) {
+      throw Exception(
+        'Invalid API key. Check your WhisperX API Key in Settings.',
+      );
+    }
+    if (streamedResponse.statusCode != 200) {
+      throw Exception(
+        'WhisperX server error ${streamedResponse.statusCode}: $body',
+      );
+    }
+
+    final decoded = jsonDecode(body) as Map<String, dynamic>;
+    final rawText = (decoded['text'] as String? ?? '').trim();
+
+    // Try to parse diarized segments if available
+    final utterancesJson = decoded['utterances'] as List<dynamic>?;
+    List<CallUtterance> utterances = [];
+
+    if (utterancesJson != null && utterancesJson.isNotEmpty) {
+      utterances = utterancesJson
+          .asMap()
+          .entries
+          .map((entry) {
+            final idx = entry.key;
+            final u = entry.value as Map<String, dynamic>;
+
+            return CallUtterance(
+              id: const Uuid().v4(),
+              callId: '',
+              speaker: (u['by'] as String? ?? 'person_1').trim(),
+              text: (u['text'] as String? ?? '').trim(),
+              startMs: ((u['start_ms'] as num?)?.toDouble() ?? 0).round(),
+              sequence: idx,
+            );
+          })
+          .where((u) => u.text.isNotEmpty)
+          .toList();
+    }
+
+    // If no diarized segments, fall back to single utterance from raw text
+    if (utterances.isEmpty && rawText.isNotEmpty) {
+      utterances = [
+        CallUtterance(
+          id: const Uuid().v4(),
+          callId: '',
+          speaker: 'person_1',
+          text: rawText,
+          startMs: 0,
+          sequence: 0,
+        ),
+      ];
+    }
+
+    return CallTranscriptionResult(
+      success: true,
+      rawText: rawText,
+      utterances: utterances,
+    );
   }
 }
 

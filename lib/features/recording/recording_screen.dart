@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/repositories/settings_repository.dart';
+import '../../core/transcription/transcription_provider_config.dart';
 import '../metadata/metadata_screen.dart';
 import 'recording_state.dart';
 
@@ -294,7 +295,16 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                                 fontFamily: 'Open Sans',
                                 fontWeight: FontWeight.w600,
                               ),
+                          textAlign: TextAlign.center,
                         ),
+                        if (snapshot.data == AiProvider.whisperx) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'This may take up to 2 minutes.',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: Colors.grey[600]),
+                          ),
+                        ],
                         const SizedBox(height: 8),
                         Text(
                           'Using $providerName',
