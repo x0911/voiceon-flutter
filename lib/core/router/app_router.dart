@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/calls/calls_screen.dart';
-import '../../features/calls/call_detail_screen.dart';
+import '../../features/call_vault/call_vault_screen.dart';
+import '../../features/call_vault/call_detail_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/metadata/metadata_screen.dart';
 import '../../features/note_detail/note_detail_screen.dart';
@@ -69,12 +69,12 @@ final appRouter = GoRouter(
       builder: (context, state) => const SettingsScreen(),
     ),
     GoRoute(
-      path: '/calls',
-      name: 'calls',
-      builder: (context, state) => const CallsScreen(),
+      path: '/call-vault',
+      name: 'callVault',
+      builder: (context, state) => const CallVaultScreen(),
     ),
     GoRoute(
-      path: '/calls/:id',
+      path: '/call-vault/:id',
       name: 'callDetail',
       builder: (context, state) {
         final id = state.pathParameters['id'];

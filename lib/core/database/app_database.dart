@@ -34,10 +34,10 @@ LazyDatabase _openConnection() {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
-  AppDatabase.test(QueryExecutor executor) : super(executor);
+  AppDatabase.test(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -45,6 +45,13 @@ class AppDatabase extends _$AppDatabase {
           if (from < 2) {
             await migrator.createTable(callsTable);
             await migrator.createTable(callUtterancesTable);
+          }
+          if (from < 3) {
+            try { await migrator.addColumn(callsTable, callsTable.sourceFileUri); } catch (_) {}
+          }
+          if (from < 4) {
+            try { await migrator.addColumn(callsTable, callsTable.fileSizeBytes); } catch (_) {}
+            try { await migrator.addColumn(callsTable, callsTable.fileExtension); } catch (_) {}
           }
         },
       );

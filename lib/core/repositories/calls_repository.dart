@@ -23,6 +23,9 @@ class CallsRepository {
     return _callsDao.watchFilteredCalls(params).asyncMap(_attachUtterances);
   }
 
+  Future<bool> existsBySourceUri(String sourceFileUri) =>
+      _callsDao.existsBySourceUri(sourceFileUri);
+
   // ── Inserts ─────────────────────────────────────────────────────────────
 
   Future<void> insertCallWithUtterances(
@@ -38,8 +41,11 @@ class CallsRepository {
       endedAt: call.endedAt.millisecondsSinceEpoch,
       durationSeconds: call.durationSeconds,
       audioPath: call.audioPath,
+      fileSizeBytes: Value(call.fileSizeBytes),
+      fileExtension: Value(call.fileExtension),
       transcriptionStatus: Value(call.transcriptionStatus),
       rawTranscript: Value(call.rawTranscript),
+      sourceFileUri: Value(call.sourceFileUri),
       createdAt: DateTime.now().millisecondsSinceEpoch,
     );
     await _callsDao.insertCall(companion);
@@ -79,6 +85,10 @@ class CallsRepository {
         utterances.map((u) => _utteranceToCompanion(u, callId)).toList(),
       );
     }
+  }
+
+  Future<void> updateTranscriptionStatus(String callId, String status) async {
+    await _callsDao.updateTranscriptionStatus(callId, status);
   }
 
   // ── Deletes ──────────────────────────────────────────────────────────────
@@ -122,8 +132,11 @@ class CallsRepository {
       endedAt: DateTime.fromMillisecondsSinceEpoch(row.endedAt),
       durationSeconds: row.durationSeconds,
       audioPath: row.audioPath,
+      fileSizeBytes: row.fileSizeBytes,
+      fileExtension: row.fileExtension,
       transcriptionStatus: row.transcriptionStatus,
       rawTranscript: row.rawTranscript,
+      sourceFileUri: row.sourceFileUri,
       utterances: utterances,
     );
   }

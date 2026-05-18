@@ -3,17 +3,82 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import 'call_card.dart';
-import 'calls_provider.dart';
+import 'package:flutter/services.dart';
 
-class CallsScreen extends ConsumerStatefulWidget {
-  const CallsScreen({super.key});
+import '../../core/services/call_vault_sync_service.dart';
+import 'call_card.dart';
+import 'call_vault_provider.dart';
+
+class CallVaultScreen extends ConsumerStatefulWidget {
+  const CallVaultScreen({super.key});
 
   @override
-  ConsumerState<CallsScreen> createState() => _CallsScreenState();
+  ConsumerState<CallVaultScreen> createState() => _CallVaultScreenState();
 }
 
-class _CallsScreenState extends ConsumerState<CallsScreen> {
+class _CallVaultScreenState extends ConsumerState<CallVaultScreen> {
+  static const _callsChannel = MethodChannel('voiceon/calls');
+  bool _isLoadingFolder = true;
+  bool _folderConfigured = false;
+  SyncResult? _lastShownResult;
+  ValueNotifier<SyncState>? _syncNotifier;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkFolderConfiguration();
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncNotifier = ref.read(callVaultSyncStateProvider);
+      _syncNotifier!.addListener(_onSyncStateChanged);
+    });
+  }
+
+  @override
+  void dispose() {
+    _syncNotifier?.removeListener(_onSyncStateChanged);
+    super.dispose();
+  }
+
+  void _onSyncStateChanged() {
+    if (_syncNotifier == null) return;
+    final state = _syncNotifier!.value;
+    if (!state.isRunning && state.result != null && state.result != _lastShownResult) {
+      _lastShownResult = state.result;
+      final result = state.result!;
+      String message = '';
+      if (result.imported > 0) {
+        message = 'Call Vault: ${result.imported} new call(s) imported';
+      } else if (result.failed > 0) {
+        message = 'Call Vault: ${result.failed} transcription(s) failed — tap to retry';
+      } else if (result.skipped > 0) {
+        message = 'Call Vault: up to date';
+      }
+      
+      if (message.isNotEmpty && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      }
+    }
+  }
+
+  Future<void> _checkFolderConfiguration() async {
+    try {
+      final uri = await _callsChannel.invokeMethod<String?>(
+        'getCallVaultFolderUri',
+      );
+      if (mounted) {
+        setState(() {
+          _folderConfigured = uri != null;
+          _isLoadingFolder = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingFolder = false);
+      }
+    }
+  }
+
   void _openFilters(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -33,10 +98,11 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
     final callsAsync = ref.watch(filteredCallsProvider);
     final filters = ref.watch(callFilterProvider);
     final filterNotifier = ref.read(callFilterProvider.notifier);
+    final syncNotifier = ref.watch(callVaultSyncStateProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Calls'),
+        title: const Text('Call Vault'),
         actions: [
           Stack(
             alignment: Alignment.center,
@@ -61,10 +127,43 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                 ),
             ],
           ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Sync Now',
+            onPressed: () => ref.read(callVaultSyncServiceProvider).sync(force: true),
+          ),
         ],
       ),
-      body: CustomScrollView(
+      body: RefreshIndicator(
+        onRefresh: () => ref.read(callVaultSyncServiceProvider).sync(force: true),
+        child: CustomScrollView(
         slivers: [
+          // Sync progress bar
+          SliverToBoxAdapter(
+            child: ValueListenableBuilder<SyncState>(
+              valueListenable: syncNotifier,
+              builder: (context, state, _) {
+                if (!state.isRunning) return const SizedBox.shrink();
+                return Column(
+                  children: [
+                    LinearProgressIndicator(
+                      value: state.total > 0 ? state.current / state.total : null,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: Text(
+                        state.total > 0
+                            ? 'Syncing ${state.current} of ${state.total}...'
+                            : 'Checking for new recordings...',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+
           // Search field
           SliverToBoxAdapter(
             child: Padding(
@@ -99,8 +198,51 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
           ),
 
           // Calls list
-          callsAsync.when(
-            data: (calls) {
+          if (_isLoadingFolder)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (!_folderConfigured)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.folder_off_outlined,
+                      size: 72,
+                      color: Colors.amber,
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Setup Required',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'You need to configure the call recordings folder in Settings before Voiceon can import calls.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: () => context.push('/settings'),
+                      icon: const Icon(Icons.settings),
+                      label: const Text('Go to Settings'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            callsAsync.when(
+              data: (calls) {
               if (calls.isEmpty) {
                 return SliverFillRemaining(
                   hasScrollBody: false,
@@ -118,9 +260,9 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                         Text(
                           filters.hasFilters
                               ? 'No calls match your filters'
-                              : 'No calls recorded yet',
+                              : 'No calls in your vault yet.\nMake sure call recording is enabled in your Phone app.',
                           style: const TextStyle(
-                            fontSize: 20,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,
@@ -143,7 +285,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                   final call = calls[index];
                   return CallCard(
                     callRecord: call,
-                    onTap: () => context.push('/calls/${call.id}'),
+                    onTap: () => context.push('/call-vault/${call.id}'),
                   );
                 }, childCount: calls.length),
               );
@@ -160,6 +302,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
           
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
+      ),
       ),
     );
   }

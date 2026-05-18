@@ -34,6 +34,14 @@ class CallsDao extends DatabaseAccessor<AppDatabase> with _$CallsDaoMixin {
     await batch((b) => b.insertAllOnConflictUpdate(callUtterancesTable, utterances));
   }
 
+  Future<bool> existsBySourceUri(String sourceFileUri) async {
+    if (sourceFileUri.isEmpty) return false;
+    final count = await (select(callsTable)
+      ..where((t) => t.sourceFileUri.equals(sourceFileUri)))
+      .get();
+    return count.isNotEmpty;
+  }
+
   // ── Watch ───────────────────────────────────────────────────────────────
 
   Stream<List<CallsTableData>> watchAllCalls() {
@@ -125,6 +133,12 @@ ORDER BY started_at DESC
         transcriptionStatus: Value(status),
         rawTranscript: Value(rawTranscript),
       ),
+    );
+  }
+
+  Future<void> updateTranscriptionStatus(String id, String status) async {
+    await (update(callsTable)..where((t) => t.id.equals(id))).write(
+      CallsTableCompanion(transcriptionStatus: Value(status)),
     );
   }
 

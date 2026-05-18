@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router/app_router.dart';
-import 'core/services/call_event_service.dart';
+import 'core/services/call_vault_sync_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 
@@ -21,8 +21,9 @@ class _VoiceonAppState extends ConsumerState<VoiceonApp> {
   @override
   void initState() {
     super.initState();
-    // Initialize call event service
-    ref.read(callEventServiceProvider);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(callVaultSyncServiceProvider).sync();
+    });
   }
 
   @override

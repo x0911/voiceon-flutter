@@ -1,8 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/models/call_record.dart';
 import '../../core/repositories/calls_repository.dart';
+import '../../core/services/call_vault_sync_service.dart';
+
+final callVaultSyncStateProvider = Provider<ValueNotifier<SyncState>>((ref) {
+  return ref.watch(callVaultSyncServiceProvider).syncState;
+});
 
 // Filter params state
 class CallFilterState {

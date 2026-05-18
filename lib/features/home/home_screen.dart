@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/models/note.dart';
-import '../../core/models/person.dart';
 import '../../core/repositories/note_repository.dart';
 import 'home_state.dart';
 import 'note_card.dart';
@@ -410,7 +409,7 @@ class _FilterSheet extends ConsumerWidget {
                       );
                     },
                     loading: () => const SizedBox.shrink(),
-                    error: (_, __) => const SizedBox.shrink(),
+                    error: (error, stackTrace) => const SizedBox.shrink(),
                   ),
                 ],
               ),

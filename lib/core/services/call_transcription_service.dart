@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
@@ -60,7 +61,7 @@ class CallTranscriptionService {
         config.provider!,
         config.apiKey,
         audioPath,
-      ).timeout(const Duration(seconds: 60));
+      ).timeout(const Duration(seconds: 90));
     } on TimeoutException {
       return const CallTranscriptionResult.failed('Transcription timed out');
     } catch (e) {
@@ -113,8 +114,17 @@ class CallTranscriptionService {
       http.MultipartFile.fromBytes('file', fileBytes, filename: 'call.m4a'),
     );
 
+    debugPrint('--- SENDING TRANSCRIPTION REQUEST (Groq) ---');
+    debugPrint('URL: ${request.url}');
+    debugPrint('Fields: ${request.fields}');
+    debugPrint('--------------------------------------------');
+
     final response = await request.send();
     final body = await response.stream.bytesToString();
+
+    debugPrint('--- AI RESPONSE (Groq) ---');
+    debugPrint(body);
+    debugPrint('--------------------------');
 
     if (response.statusCode != 200) {
       throw Exception('Groq HTTP ${response.statusCode}: $body');
@@ -122,7 +132,10 @@ class CallTranscriptionService {
 
     final decoded = jsonDecode(body) as Map<String, dynamic>;
     final rawText = (decoded['text'] as String? ?? '').trim();
-    final utterances = _parseUtterancesFromJson(rawText);
+
+    // Post-process with LLM for diarization
+    final diarizedJson = await _postProcessDiarization(AiProvider.groq, apiKey, rawText);
+    final utterances = _parseUtterancesFromJson(diarizedJson);
 
     return CallTranscriptionResult(
       success: true,
@@ -157,8 +170,17 @@ class CallTranscriptionService {
       http.MultipartFile.fromBytes('file', fileBytes, filename: 'call.m4a'),
     );
 
+    debugPrint('--- SENDING TRANSCRIPTION REQUEST (OpenAI) ---');
+    debugPrint('URL: ${request.url}');
+    debugPrint('Fields: ${request.fields}');
+    debugPrint('----------------------------------------------');
+
     final response = await request.send();
     final body = await response.stream.bytesToString();
+
+    debugPrint('--- AI RESPONSE (OpenAI) ---');
+    debugPrint(body);
+    debugPrint('----------------------------');
 
     if (response.statusCode != 200) {
       throw Exception('OpenAI HTTP ${response.statusCode}: $body');
@@ -166,13 +188,80 @@ class CallTranscriptionService {
 
     final decoded = jsonDecode(body) as Map<String, dynamic>;
     final rawText = (decoded['text'] as String? ?? '').trim();
-    final utterances = _parseUtterancesFromJson(rawText);
+
+    // Post-process with LLM for diarization
+    final diarizedJson = await _postProcessDiarization(AiProvider.openai, apiKey, rawText);
+    final utterances = _parseUtterancesFromJson(diarizedJson);
 
     return CallTranscriptionResult(
       success: true,
       rawText: rawText,
       utterances: utterances,
     );
+  }
+
+  // ── LLM Diarization (Groq/OpenAI) ─────────────────────────────────────────
+
+  Future<String> _postProcessDiarization(
+    AiProvider provider,
+    String apiKey,
+    String plainText,
+  ) async {
+    if (plainText.isEmpty) return plainText;
+
+    String endpoint;
+    String model;
+
+    if (provider == AiProvider.groq) {
+      endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+      model = 'llama-3.3-70b-versatile';
+    } else {
+      endpoint = 'https://api.openai.com/v1/chat/completions';
+      model = 'gpt-4o-mini';
+    }
+
+    final prompt = 'You are an AI tasked with diarizing a phone call transcript.\n'
+        '$_callDiarizationPrompt\n\n'
+        'Here is the raw text transcript to diarize:\n\n'
+        '$plainText';
+
+    debugPrint('--- SENDING LLM DIARIZATION REQUEST (${provider.name}) ---');
+    
+    final response = await http.post(
+      Uri.parse(endpoint),
+      headers: {
+        'Authorization': 'Bearer $apiKey',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'model': model,
+        'messages': [
+          {
+            'role': 'system',
+            'content': 'You are a helpful assistant that outputs only raw JSON arrays.'
+          },
+          {
+            'role': 'user',
+            'content': prompt
+          },
+        ],
+        'temperature': 0.1,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      debugPrint('LLM Diarization failed: ${response.statusCode} - ${response.body}');
+      return plainText; // gracefully degrade to plain text
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final content = json['choices']?[0]?['message']?['content'] as String? ?? '';
+    
+    debugPrint('--- LLM DIARIZATION RESPONSE ---');
+    debugPrint(content);
+    debugPrint('--------------------------------');
+
+    return content.trim();
   }
 
   // ── AssemblyAI (native speaker diarization) ───────────────────────────────
@@ -188,6 +277,10 @@ class CallTranscriptionService {
 
     // Step 1: Upload
     final fileBytes = await file.readAsBytes();
+    
+    debugPrint('--- UPLOADING TO ASSEMBLYAI ---');
+    debugPrint('URL: https://api.assemblyai.com/v2/upload');
+
     final uploadResponse = await http.post(
       Uri.parse('https://api.assemblyai.com/v2/upload'),
       headers: {
@@ -204,17 +297,25 @@ class CallTranscriptionService {
     final uploadUrl = (jsonDecode(uploadResponse.body))['upload_url'] as String;
 
     // Step 2: Submit with speaker_labels = true
+    final bodyJson = jsonEncode({
+      'audio_url': uploadUrl,
+      'language_detection': true,
+      'speaker_labels': true,
+      'speech_threshold': 0.2,
+    });
+
+    debugPrint('--- SUBMITTING TO ASSEMBLYAI ---');
+    debugPrint('URL: https://api.assemblyai.com/v2/transcript');
+    debugPrint('Body: $bodyJson');
+    debugPrint('--------------------------------');
+
     final submitResponse = await http.post(
       Uri.parse('https://api.assemblyai.com/v2/transcript'),
       headers: {
         'Authorization': apiKey,
         'Content-Type': 'application/json',
       },
-      body: jsonEncode({
-        'audio_url': uploadUrl,
-        'language_detection': true,
-        'speaker_labels': true,
-      }),
+      body: bodyJson,
     );
 
     if (submitResponse.statusCode != 200) {
@@ -294,15 +395,19 @@ class CallTranscriptionService {
 
     final fileBytes = await file.readAsBytes();
 
-    final response = await http.post(
-      Uri.parse(
-        'https://api.deepgram.com/v1/listen'
+    final url = 'https://api.deepgram.com/v1/listen'
         '?model=nova-2'
         '&smart_format=true'
         '&detect_language=true'
         '&diarize=true'
-        '&utterances=true',
-      ),
+        '&utterances=true';
+
+    debugPrint('--- SENDING TRANSCRIPTION REQUEST (Deepgram) ---');
+    debugPrint('URL: $url');
+    debugPrint('------------------------------------------------');
+
+    final response = await http.post(
+      Uri.parse(url),
       headers: {
         'Authorization': 'Token $apiKey',
         'Content-Type': 'audio/mp4',
@@ -374,6 +479,11 @@ class CallTranscriptionService {
     request.files.add(
       http.MultipartFile.fromBytes('media', fileBytes, filename: 'call.m4a'),
     );
+
+    debugPrint('--- SENDING TRANSCRIPTION REQUEST (Rev.ai) ---');
+    debugPrint('URL: ${request.url}');
+    debugPrint('Fields: ${request.fields}');
+    debugPrint('----------------------------------------------');
 
     final uploadResponse = await request.send();
     final uploadBody = await uploadResponse.stream.bytesToString();
@@ -488,43 +598,54 @@ class CallTranscriptionService {
   /// Prompt injected into Whisper-based providers (Groq, OpenAI).
   /// Instructs the model to return speaker-labeled JSON instead of plain text.
   static const String _callDiarizationPrompt =
-      'This is a phone call recording between two people. '
-      'Transcribe the conversation and format it as a JSON array ONLY, no other text. '
-      'Each element must have "by" (either "person_1" or "person_2") and "text" fields. '
-      'Person_1 is the phone owner. Person_2 is the other caller. '
-      r'Example: [{"by":"person_1","text":"Hello"},{"by":"person_2","text":"Hi there"}] '
-      'If you cannot determine the speaker, alternate between person_1 and person_2. '
-      'Do not include any text outside the JSON array.';
+      'CRITICAL INSTRUCTIONS — follow exactly:\n'
+      '1. Transcribe the audio VERBATIM. Do NOT translate anything.\n'
+      '2. If someone speaks Arabic, write Arabic. If someone speaks English, write English.\n'
+      '3. If a sentence mixes Arabic and English, write it exactly as spoken — mixed.\n'
+      '4. Return ONLY a JSON array. No other text, no markdown, no code fences.\n'
+      '5. Each element: { "by": "person_1" or "person_2", "text": "<exact words spoken>" }\n'
+      '6. person_1 is the phone owner. person_2 is the other caller.\n'
+      '7. Alternate speakers based on natural conversation turns.\n'
+      '8. If you cannot determine speaker for a segment, alternate starting with person_1.\n'
+      '9. Do NOT merge all speech into one element. Each conversation turn = one element.\n\n'
+      'Example of correct output:\n'
+      '[{"by":"person_1","text":"Hello, عامل ايه يا مصطفى؟"},{"by":"person_2","text":"Welcome, أنا كويس يا حمدي"}]';
 
-  /// Tries to parse a JSON array of speaker-labeled utterances from Whisper output.
-  /// Strips any markdown code fences the model may have added.
-  /// Returns an empty list if parsing fails (caller falls back to rawText).
-  List<CallUtterance> _parseUtterancesFromJson(String jsonText) {
+  List<CallUtterance> _parseUtterancesFromJson(String rawText) {
     try {
-      final clean = jsonText
-          .replaceAll(RegExp(r'```json\s*'), '')
+      // Step 1: strip markdown code fences and leading/trailing whitespace
+      String clean = rawText
+          .replaceAll(RegExp(r'```json\s*', caseSensitive: false), '')
           .replaceAll(RegExp(r'```\s*'), '')
           .trim();
 
-      // The model sometimes prepends/appends prose — find the first '[' and last ']'
-      final start = clean.indexOf('[');
-      final end = clean.lastIndexOf(']');
-      if (start == -1 || end == -1 || end <= start) return [];
+      // Step 2: extract the JSON array even if surrounded by prose
+      // (some models add a sentence before the array)
+      final arrayMatch = RegExp(r'\[.*\]', dotAll: true).firstMatch(clean);
+      if (arrayMatch != null) {
+        clean = arrayMatch.group(0)!;
+      }
 
-      final arrayText = clean.substring(start, end + 1);
-      final list = jsonDecode(arrayText) as List<dynamic>;
+      final list = jsonDecode(clean) as List<dynamic>;
 
       return list.asMap().entries.map((entry) {
         final map = entry.value as Map<String, dynamic>;
+        final rawBy = (map['by'] as String? ?? 'person_1').toLowerCase().trim();
+        // Normalize: accept "person1", "speaker_1", "a", "1" → "person_1"
+        final speaker = (rawBy.contains('2') || rawBy == 'b' || rawBy == 'person_2')
+            ? 'person_2'
+            : 'person_1';
         return CallUtterance(
           id: const Uuid().v4(),
-          callId: '',
-          speaker: (map['by'] as String?)?.trim() ?? 'person_1',
-          text: (map['text'] as String?)?.trim() ?? '',
-          startMs: null,
+          callId: '', // filled in by caller
+          speaker: speaker,
+          text: (map['text'] as String? ?? '').trim(),
+          startMs: (map['start_ms'] as num?)?.toInt(),
           sequence: entry.key,
         );
-      }).where((u) => u.text.isNotEmpty).toList();
+      })
+      .where((u) => u.text.isNotEmpty) // skip empty utterances
+      .toList();
     } catch (_) {
       return [];
     }

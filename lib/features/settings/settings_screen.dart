@@ -20,7 +20,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   // ── Call recording state ─────────────────────────────────────────────────
   static const _callsChannel = MethodChannel('voiceon/calls');
-  bool _callRecordingEnabled = false;
+  bool _callVaultEnabled = false;
+  String? _callVaultFolderUri;
 
   // ── AI Transcription state ───────────────────────────────────────────────
   late TextEditingController _apiKeyController;
@@ -35,21 +36,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     super.initState();
     _apiKeyController = TextEditingController();
     _loadSettings();
-    _loadCallRecordingEnabled();
+    _loadCallVaultEnabled();
   }
 
   // ── Call recording helpers ───────────────────────────────────────────────
 
-  Future<void> _loadCallRecordingEnabled() async {
+  Future<void> _loadCallVaultEnabled() async {
     try {
       final enabled =
-          await _callsChannel.invokeMethod<bool>('isCallRecordingEnabled') ??
-          false;
-      if (mounted) setState(() => _callRecordingEnabled = enabled);
+          await _callsChannel.invokeMethod<bool>('isCallVaultEnabled') ?? false;
+      final folderUri = await _callsChannel.invokeMethod<String?>(
+        'getCallVaultFolderUri',
+      );
+      if (mounted) {
+        setState(() {
+          _callVaultEnabled = enabled;
+          _callVaultFolderUri = folderUri;
+        });
+      }
     } catch (_) {}
   }
 
-  Future<void> _onCallRecordingToggled(bool newValue) async {
+  Future<void> _onCallVaultToggled(bool newValue) async {
     if (newValue) {
       // Show legal consent dialog before enabling
       final accepted = await _showConsentDialog();
@@ -61,8 +69,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
 
     try {
-      await _callsChannel.invokeMethod('setCallRecordingEnabled', newValue);
-      if (mounted) setState(() => _callRecordingEnabled = newValue);
+      await _callsChannel.invokeMethod('setCallVaultEnabled', newValue);
+      if (mounted) setState(() => _callVaultEnabled = newValue);
+    } catch (_) {}
+  }
+
+  Future<void> _pickFolder() async {
+    try {
+      final uri = await _callsChannel.invokeMethod<String>(
+        'pickCallVaultFolder',
+      );
+      if (uri != null && mounted) {
+        setState(() => _callVaultFolderUri = uri);
+      }
     } catch (_) {}
   }
 
@@ -74,14 +93,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         title: const Text('⚠️ Legal Notice'),
         content: const SingleChildScrollView(
           child: Text(
-            'Recording phone calls may be illegal in your jurisdiction without '
-            'the consent of all parties involved.\n\n'
-            'By enabling this feature, you confirm that:\n'
+            'Call Vault imports recordings saved by your phone\'s built-in call recorder.\n\n'
+            'Before enabling:\n'
+            '• Enable call recording in your Phone app\n'
+            '• Select the folder where your Phone app saves recordings\n\n'
+            'By enabling, you confirm:\n'
             '• You have the legal right to record calls in your country\n'
-            '• You will inform other parties when required by law\n'
-            '• You accept full responsibility for compliance with local laws\n\n'
-            'Voiceon is not responsible for any legal consequences arising '
-            'from your use of this feature.',
+            '• You accept full responsibility for compliance with local laws',
           ),
         ),
         actions: [
@@ -100,27 +118,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<bool> _requestCallPermissions() async {
-    final statuses = await [
-      Permission.phone,
-      Permission.contacts,
-      Permission.microphone,
-      Permission.notification,
-    ].request();
+    await [Permission.contacts, Permission.notification].request();
 
-    final phoneDenied = statuses[Permission.phone] != PermissionStatus.granted;
-    final micDenied =
-        statuses[Permission.microphone] != PermissionStatus.granted;
-
-    if ((phoneDenied || micDenied) && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Required permissions were denied. Call recording cannot be enabled.',
-          ),
-        ),
-      );
-      return false;
-    }
     return true;
   }
 
@@ -353,70 +352,121 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 32),
 
-            // ── Call Recording ──────────────────────────────────────────
-            const Text('Call Recording', style: TextStyle(letterSpacing: 1.2)),
+            // ── Call Vault ──────────────────────────────────────────
+            const Text('Call Vault', style: TextStyle(letterSpacing: 1.2)),
             const SizedBox(height: 12),
 
             Card(
               margin: EdgeInsets.zero,
               shadowColor: Colors.transparent,
               child: SwitchListTile(
-                title: const Text('Record Calls'),
-                value: _callRecordingEnabled,
-                onChanged: _onCallRecordingToggled,
+                title: const Text('Enable Call Vault'),
+                value: _callVaultEnabled,
+                onChanged: _onCallVaultToggled,
                 secondary: Icon(Icons.call_outlined),
               ),
             ),
             const SizedBox(height: 4),
             const Text(
-              'Automatically record incoming and outgoing calls',
+              "Import and transcribe recordings from your Phone app",
               style: TextStyle(fontSize: 12),
             ),
 
-            if (_callRecordingEnabled) ...[
+            if (_callVaultEnabled) ...[
               const SizedBox(height: 10),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer.withAlpha(180),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      size: 18,
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+              Card(
+                margin: EdgeInsets.zero,
+                shadowColor: Colors.transparent,
+                child: ListTile(
+                  title: const Text('Phone Recordings Folder'),
+                  subtitle: Text(
+                    _callVaultFolderUri != null
+                        ? _callVaultFolderUri!.split('%3A').last
+                        : 'Required — tap to select your Phone app\'s recordings folder',
+                    style: TextStyle(
+                      color: _callVaultFolderUri == null
+                          ? Colors.redAccent
+                          : null,
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Voiceon will run in the background and automatically '
-                        'record calls. A notification will appear during recording.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.folder_open),
+                    onPressed: _pickFolder,
+                  ),
+                  onTap: _pickFolder,
                 ),
               ),
+              const SizedBox(height: 10),
+              if (_callVaultFolderUri == null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          "Setup Required\n\n"
+                          "Step 1: Enable call recording in your Phone app\n\n"
+                          "• Samsung: Phone app → ⋮ → Settings → Call recording\n"
+                          "• Xiaomi: Phone app → Settings → Call recording\n"
+                          "• Other brands: Check your Phone app settings\n\n"
+                          "Step 2: Tap 'Phone Recordings Folder' above and select "
+                          "the folder where your Phone app saves recordings.\n\n"
+                          "Step 3: Open Call Vault from the button below — "
+                          "Voiceon will import and transcribe your calls automatically.",
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.check_circle_outline,
+                        size: 18,
+                        color: Colors.green,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Voiceon will automatically import and transcribe new call recordings.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               Card(
                 margin: EdgeInsets.zero,
                 shadowColor: Colors.transparent,
                 child: ListTile(
                   leading: const Icon(Icons.list_alt),
-                  title: const Text('View Recorded Calls'),
+                  title: const Text('Open Call Vault'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/calls'),
+                  onTap: () => context.push('/call-vault'),
                 ),
               ),
             ],
@@ -565,6 +615,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   ElevatedButton(
                     onPressed: _isTesting ? null : _testConnection,
+                    style: ButtonStyle(elevation: WidgetStatePropertyAll(0.0)),
                     child: _isTesting
                         ? const SizedBox(
                             height: 20,

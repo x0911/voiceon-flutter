@@ -1279,6 +1279,30 @@ class $CallsTableTable extends CallsTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _fileSizeBytesMeta = const VerificationMeta(
+    'fileSizeBytes',
+  );
+  @override
+  late final GeneratedColumn<int> fileSizeBytes = GeneratedColumn<int>(
+    'file_size_bytes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _fileExtensionMeta = const VerificationMeta(
+    'fileExtension',
+  );
+  @override
+  late final GeneratedColumn<String> fileExtension = GeneratedColumn<String>(
+    'file_extension',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('m4a'),
+  );
   static const VerificationMeta _transcriptionStatusMeta =
       const VerificationMeta('transcriptionStatus');
   @override
@@ -1297,6 +1321,18 @@ class $CallsTableTable extends CallsTable
   @override
   late final GeneratedColumn<String> rawTranscript = GeneratedColumn<String>(
     'raw_transcript',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _sourceFileUriMeta = const VerificationMeta(
+    'sourceFileUri',
+  );
+  @override
+  late final GeneratedColumn<String> sourceFileUri = GeneratedColumn<String>(
+    'source_file_uri',
     aliasedName,
     false,
     type: DriftSqlType.string,
@@ -1324,8 +1360,11 @@ class $CallsTableTable extends CallsTable
     endedAt,
     durationSeconds,
     audioPath,
+    fileSizeBytes,
+    fileExtension,
     transcriptionStatus,
     rawTranscript,
+    sourceFileUri,
     createdAt,
   ];
   @override
@@ -1408,6 +1447,24 @@ class $CallsTableTable extends CallsTable
     } else if (isInserting) {
       context.missing(_audioPathMeta);
     }
+    if (data.containsKey('file_size_bytes')) {
+      context.handle(
+        _fileSizeBytesMeta,
+        fileSizeBytes.isAcceptableOrUnknown(
+          data['file_size_bytes']!,
+          _fileSizeBytesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('file_extension')) {
+      context.handle(
+        _fileExtensionMeta,
+        fileExtension.isAcceptableOrUnknown(
+          data['file_extension']!,
+          _fileExtensionMeta,
+        ),
+      );
+    }
     if (data.containsKey('transcription_status')) {
       context.handle(
         _transcriptionStatusMeta,
@@ -1423,6 +1480,15 @@ class $CallsTableTable extends CallsTable
         rawTranscript.isAcceptableOrUnknown(
           data['raw_transcript']!,
           _rawTranscriptMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source_file_uri')) {
+      context.handle(
+        _sourceFileUriMeta,
+        sourceFileUri.isAcceptableOrUnknown(
+          data['source_file_uri']!,
+          _sourceFileUriMeta,
         ),
       );
     }
@@ -1475,6 +1541,14 @@ class $CallsTableTable extends CallsTable
         DriftSqlType.string,
         data['${effectivePrefix}audio_path'],
       )!,
+      fileSizeBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}file_size_bytes'],
+      )!,
+      fileExtension: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}file_extension'],
+      )!,
       transcriptionStatus: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}transcription_status'],
@@ -1482,6 +1556,10 @@ class $CallsTableTable extends CallsTable
       rawTranscript: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}raw_transcript'],
+      )!,
+      sourceFileUri: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_file_uri'],
       )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -1505,8 +1583,11 @@ class CallsTableData extends DataClass implements Insertable<CallsTableData> {
   final int endedAt;
   final int durationSeconds;
   final String audioPath;
+  final int fileSizeBytes;
+  final String fileExtension;
   final String transcriptionStatus;
   final String rawTranscript;
+  final String sourceFileUri;
   final int createdAt;
   const CallsTableData({
     required this.id,
@@ -1517,8 +1598,11 @@ class CallsTableData extends DataClass implements Insertable<CallsTableData> {
     required this.endedAt,
     required this.durationSeconds,
     required this.audioPath,
+    required this.fileSizeBytes,
+    required this.fileExtension,
     required this.transcriptionStatus,
     required this.rawTranscript,
+    required this.sourceFileUri,
     required this.createdAt,
   });
   @override
@@ -1532,8 +1616,11 @@ class CallsTableData extends DataClass implements Insertable<CallsTableData> {
     map['ended_at'] = Variable<int>(endedAt);
     map['duration_seconds'] = Variable<int>(durationSeconds);
     map['audio_path'] = Variable<String>(audioPath);
+    map['file_size_bytes'] = Variable<int>(fileSizeBytes);
+    map['file_extension'] = Variable<String>(fileExtension);
     map['transcription_status'] = Variable<String>(transcriptionStatus);
     map['raw_transcript'] = Variable<String>(rawTranscript);
+    map['source_file_uri'] = Variable<String>(sourceFileUri);
     map['created_at'] = Variable<int>(createdAt);
     return map;
   }
@@ -1548,8 +1635,11 @@ class CallsTableData extends DataClass implements Insertable<CallsTableData> {
       endedAt: Value(endedAt),
       durationSeconds: Value(durationSeconds),
       audioPath: Value(audioPath),
+      fileSizeBytes: Value(fileSizeBytes),
+      fileExtension: Value(fileExtension),
       transcriptionStatus: Value(transcriptionStatus),
       rawTranscript: Value(rawTranscript),
+      sourceFileUri: Value(sourceFileUri),
       createdAt: Value(createdAt),
     );
   }
@@ -1568,10 +1658,13 @@ class CallsTableData extends DataClass implements Insertable<CallsTableData> {
       endedAt: serializer.fromJson<int>(json['endedAt']),
       durationSeconds: serializer.fromJson<int>(json['durationSeconds']),
       audioPath: serializer.fromJson<String>(json['audioPath']),
+      fileSizeBytes: serializer.fromJson<int>(json['fileSizeBytes']),
+      fileExtension: serializer.fromJson<String>(json['fileExtension']),
       transcriptionStatus: serializer.fromJson<String>(
         json['transcriptionStatus'],
       ),
       rawTranscript: serializer.fromJson<String>(json['rawTranscript']),
+      sourceFileUri: serializer.fromJson<String>(json['sourceFileUri']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
     );
   }
@@ -1587,8 +1680,11 @@ class CallsTableData extends DataClass implements Insertable<CallsTableData> {
       'endedAt': serializer.toJson<int>(endedAt),
       'durationSeconds': serializer.toJson<int>(durationSeconds),
       'audioPath': serializer.toJson<String>(audioPath),
+      'fileSizeBytes': serializer.toJson<int>(fileSizeBytes),
+      'fileExtension': serializer.toJson<String>(fileExtension),
       'transcriptionStatus': serializer.toJson<String>(transcriptionStatus),
       'rawTranscript': serializer.toJson<String>(rawTranscript),
+      'sourceFileUri': serializer.toJson<String>(sourceFileUri),
       'createdAt': serializer.toJson<int>(createdAt),
     };
   }
@@ -1602,8 +1698,11 @@ class CallsTableData extends DataClass implements Insertable<CallsTableData> {
     int? endedAt,
     int? durationSeconds,
     String? audioPath,
+    int? fileSizeBytes,
+    String? fileExtension,
     String? transcriptionStatus,
     String? rawTranscript,
+    String? sourceFileUri,
     int? createdAt,
   }) => CallsTableData(
     id: id ?? this.id,
@@ -1614,8 +1713,11 @@ class CallsTableData extends DataClass implements Insertable<CallsTableData> {
     endedAt: endedAt ?? this.endedAt,
     durationSeconds: durationSeconds ?? this.durationSeconds,
     audioPath: audioPath ?? this.audioPath,
+    fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
+    fileExtension: fileExtension ?? this.fileExtension,
     transcriptionStatus: transcriptionStatus ?? this.transcriptionStatus,
     rawTranscript: rawTranscript ?? this.rawTranscript,
+    sourceFileUri: sourceFileUri ?? this.sourceFileUri,
     createdAt: createdAt ?? this.createdAt,
   );
   CallsTableData copyWithCompanion(CallsTableCompanion data) {
@@ -1634,12 +1736,21 @@ class CallsTableData extends DataClass implements Insertable<CallsTableData> {
           ? data.durationSeconds.value
           : this.durationSeconds,
       audioPath: data.audioPath.present ? data.audioPath.value : this.audioPath,
+      fileSizeBytes: data.fileSizeBytes.present
+          ? data.fileSizeBytes.value
+          : this.fileSizeBytes,
+      fileExtension: data.fileExtension.present
+          ? data.fileExtension.value
+          : this.fileExtension,
       transcriptionStatus: data.transcriptionStatus.present
           ? data.transcriptionStatus.value
           : this.transcriptionStatus,
       rawTranscript: data.rawTranscript.present
           ? data.rawTranscript.value
           : this.rawTranscript,
+      sourceFileUri: data.sourceFileUri.present
+          ? data.sourceFileUri.value
+          : this.sourceFileUri,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -1655,8 +1766,11 @@ class CallsTableData extends DataClass implements Insertable<CallsTableData> {
           ..write('endedAt: $endedAt, ')
           ..write('durationSeconds: $durationSeconds, ')
           ..write('audioPath: $audioPath, ')
+          ..write('fileSizeBytes: $fileSizeBytes, ')
+          ..write('fileExtension: $fileExtension, ')
           ..write('transcriptionStatus: $transcriptionStatus, ')
           ..write('rawTranscript: $rawTranscript, ')
+          ..write('sourceFileUri: $sourceFileUri, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -1672,8 +1786,11 @@ class CallsTableData extends DataClass implements Insertable<CallsTableData> {
     endedAt,
     durationSeconds,
     audioPath,
+    fileSizeBytes,
+    fileExtension,
     transcriptionStatus,
     rawTranscript,
+    sourceFileUri,
     createdAt,
   );
   @override
@@ -1688,8 +1805,11 @@ class CallsTableData extends DataClass implements Insertable<CallsTableData> {
           other.endedAt == this.endedAt &&
           other.durationSeconds == this.durationSeconds &&
           other.audioPath == this.audioPath &&
+          other.fileSizeBytes == this.fileSizeBytes &&
+          other.fileExtension == this.fileExtension &&
           other.transcriptionStatus == this.transcriptionStatus &&
           other.rawTranscript == this.rawTranscript &&
+          other.sourceFileUri == this.sourceFileUri &&
           other.createdAt == this.createdAt);
 }
 
@@ -1702,8 +1822,11 @@ class CallsTableCompanion extends UpdateCompanion<CallsTableData> {
   final Value<int> endedAt;
   final Value<int> durationSeconds;
   final Value<String> audioPath;
+  final Value<int> fileSizeBytes;
+  final Value<String> fileExtension;
   final Value<String> transcriptionStatus;
   final Value<String> rawTranscript;
+  final Value<String> sourceFileUri;
   final Value<int> createdAt;
   final Value<int> rowid;
   const CallsTableCompanion({
@@ -1715,8 +1838,11 @@ class CallsTableCompanion extends UpdateCompanion<CallsTableData> {
     this.endedAt = const Value.absent(),
     this.durationSeconds = const Value.absent(),
     this.audioPath = const Value.absent(),
+    this.fileSizeBytes = const Value.absent(),
+    this.fileExtension = const Value.absent(),
     this.transcriptionStatus = const Value.absent(),
     this.rawTranscript = const Value.absent(),
+    this.sourceFileUri = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -1729,8 +1855,11 @@ class CallsTableCompanion extends UpdateCompanion<CallsTableData> {
     required int endedAt,
     required int durationSeconds,
     required String audioPath,
+    this.fileSizeBytes = const Value.absent(),
+    this.fileExtension = const Value.absent(),
     this.transcriptionStatus = const Value.absent(),
     this.rawTranscript = const Value.absent(),
+    this.sourceFileUri = const Value.absent(),
     required int createdAt,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -1750,8 +1879,11 @@ class CallsTableCompanion extends UpdateCompanion<CallsTableData> {
     Expression<int>? endedAt,
     Expression<int>? durationSeconds,
     Expression<String>? audioPath,
+    Expression<int>? fileSizeBytes,
+    Expression<String>? fileExtension,
     Expression<String>? transcriptionStatus,
     Expression<String>? rawTranscript,
+    Expression<String>? sourceFileUri,
     Expression<int>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -1764,9 +1896,12 @@ class CallsTableCompanion extends UpdateCompanion<CallsTableData> {
       if (endedAt != null) 'ended_at': endedAt,
       if (durationSeconds != null) 'duration_seconds': durationSeconds,
       if (audioPath != null) 'audio_path': audioPath,
+      if (fileSizeBytes != null) 'file_size_bytes': fileSizeBytes,
+      if (fileExtension != null) 'file_extension': fileExtension,
       if (transcriptionStatus != null)
         'transcription_status': transcriptionStatus,
       if (rawTranscript != null) 'raw_transcript': rawTranscript,
+      if (sourceFileUri != null) 'source_file_uri': sourceFileUri,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -1781,8 +1916,11 @@ class CallsTableCompanion extends UpdateCompanion<CallsTableData> {
     Value<int>? endedAt,
     Value<int>? durationSeconds,
     Value<String>? audioPath,
+    Value<int>? fileSizeBytes,
+    Value<String>? fileExtension,
     Value<String>? transcriptionStatus,
     Value<String>? rawTranscript,
+    Value<String>? sourceFileUri,
     Value<int>? createdAt,
     Value<int>? rowid,
   }) {
@@ -1795,8 +1933,11 @@ class CallsTableCompanion extends UpdateCompanion<CallsTableData> {
       endedAt: endedAt ?? this.endedAt,
       durationSeconds: durationSeconds ?? this.durationSeconds,
       audioPath: audioPath ?? this.audioPath,
+      fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
+      fileExtension: fileExtension ?? this.fileExtension,
       transcriptionStatus: transcriptionStatus ?? this.transcriptionStatus,
       rawTranscript: rawTranscript ?? this.rawTranscript,
+      sourceFileUri: sourceFileUri ?? this.sourceFileUri,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -1829,11 +1970,20 @@ class CallsTableCompanion extends UpdateCompanion<CallsTableData> {
     if (audioPath.present) {
       map['audio_path'] = Variable<String>(audioPath.value);
     }
+    if (fileSizeBytes.present) {
+      map['file_size_bytes'] = Variable<int>(fileSizeBytes.value);
+    }
+    if (fileExtension.present) {
+      map['file_extension'] = Variable<String>(fileExtension.value);
+    }
     if (transcriptionStatus.present) {
       map['transcription_status'] = Variable<String>(transcriptionStatus.value);
     }
     if (rawTranscript.present) {
       map['raw_transcript'] = Variable<String>(rawTranscript.value);
+    }
+    if (sourceFileUri.present) {
+      map['source_file_uri'] = Variable<String>(sourceFileUri.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
@@ -1855,8 +2005,11 @@ class CallsTableCompanion extends UpdateCompanion<CallsTableData> {
           ..write('endedAt: $endedAt, ')
           ..write('durationSeconds: $durationSeconds, ')
           ..write('audioPath: $audioPath, ')
+          ..write('fileSizeBytes: $fileSizeBytes, ')
+          ..write('fileExtension: $fileExtension, ')
           ..write('transcriptionStatus: $transcriptionStatus, ')
           ..write('rawTranscript: $rawTranscript, ')
+          ..write('sourceFileUri: $sourceFileUri, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -3384,8 +3537,11 @@ typedef $$CallsTableTableCreateCompanionBuilder =
       required int endedAt,
       required int durationSeconds,
       required String audioPath,
+      Value<int> fileSizeBytes,
+      Value<String> fileExtension,
       Value<String> transcriptionStatus,
       Value<String> rawTranscript,
+      Value<String> sourceFileUri,
       required int createdAt,
       Value<int> rowid,
     });
@@ -3399,8 +3555,11 @@ typedef $$CallsTableTableUpdateCompanionBuilder =
       Value<int> endedAt,
       Value<int> durationSeconds,
       Value<String> audioPath,
+      Value<int> fileSizeBytes,
+      Value<String> fileExtension,
       Value<String> transcriptionStatus,
       Value<String> rawTranscript,
+      Value<String> sourceFileUri,
       Value<int> createdAt,
       Value<int> rowid,
     });
@@ -3486,6 +3645,16 @@ class $$CallsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get fileSizeBytes => $composableBuilder(
+    column: $table.fileSizeBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fileExtension => $composableBuilder(
+    column: $table.fileExtension,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get transcriptionStatus => $composableBuilder(
     column: $table.transcriptionStatus,
     builder: (column) => ColumnFilters(column),
@@ -3493,6 +3662,11 @@ class $$CallsTableTableFilterComposer
 
   ColumnFilters<String> get rawTranscript => $composableBuilder(
     column: $table.rawTranscript,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceFileUri => $composableBuilder(
+    column: $table.sourceFileUri,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3576,6 +3750,16 @@ class $$CallsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get fileSizeBytes => $composableBuilder(
+    column: $table.fileSizeBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fileExtension => $composableBuilder(
+    column: $table.fileExtension,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get transcriptionStatus => $composableBuilder(
     column: $table.transcriptionStatus,
     builder: (column) => ColumnOrderings(column),
@@ -3583,6 +3767,11 @@ class $$CallsTableTableOrderingComposer
 
   ColumnOrderings<String> get rawTranscript => $composableBuilder(
     column: $table.rawTranscript,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceFileUri => $composableBuilder(
+    column: $table.sourceFileUri,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3631,6 +3820,16 @@ class $$CallsTableTableAnnotationComposer
   GeneratedColumn<String> get audioPath =>
       $composableBuilder(column: $table.audioPath, builder: (column) => column);
 
+  GeneratedColumn<int> get fileSizeBytes => $composableBuilder(
+    column: $table.fileSizeBytes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get fileExtension => $composableBuilder(
+    column: $table.fileExtension,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get transcriptionStatus => $composableBuilder(
     column: $table.transcriptionStatus,
     builder: (column) => column,
@@ -3638,6 +3837,11 @@ class $$CallsTableTableAnnotationComposer
 
   GeneratedColumn<String> get rawTranscript => $composableBuilder(
     column: $table.rawTranscript,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceFileUri => $composableBuilder(
+    column: $table.sourceFileUri,
     builder: (column) => column,
   );
 
@@ -3707,8 +3911,11 @@ class $$CallsTableTableTableManager
                 Value<int> endedAt = const Value.absent(),
                 Value<int> durationSeconds = const Value.absent(),
                 Value<String> audioPath = const Value.absent(),
+                Value<int> fileSizeBytes = const Value.absent(),
+                Value<String> fileExtension = const Value.absent(),
                 Value<String> transcriptionStatus = const Value.absent(),
                 Value<String> rawTranscript = const Value.absent(),
+                Value<String> sourceFileUri = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CallsTableCompanion(
@@ -3720,8 +3927,11 @@ class $$CallsTableTableTableManager
                 endedAt: endedAt,
                 durationSeconds: durationSeconds,
                 audioPath: audioPath,
+                fileSizeBytes: fileSizeBytes,
+                fileExtension: fileExtension,
                 transcriptionStatus: transcriptionStatus,
                 rawTranscript: rawTranscript,
+                sourceFileUri: sourceFileUri,
                 createdAt: createdAt,
                 rowid: rowid,
               ),
@@ -3735,8 +3945,11 @@ class $$CallsTableTableTableManager
                 required int endedAt,
                 required int durationSeconds,
                 required String audioPath,
+                Value<int> fileSizeBytes = const Value.absent(),
+                Value<String> fileExtension = const Value.absent(),
                 Value<String> transcriptionStatus = const Value.absent(),
                 Value<String> rawTranscript = const Value.absent(),
+                Value<String> sourceFileUri = const Value.absent(),
                 required int createdAt,
                 Value<int> rowid = const Value.absent(),
               }) => CallsTableCompanion.insert(
@@ -3748,8 +3961,11 @@ class $$CallsTableTableTableManager
                 endedAt: endedAt,
                 durationSeconds: durationSeconds,
                 audioPath: audioPath,
+                fileSizeBytes: fileSizeBytes,
+                fileExtension: fileExtension,
                 transcriptionStatus: transcriptionStatus,
                 rawTranscript: rawTranscript,
+                sourceFileUri: sourceFileUri,
                 createdAt: createdAt,
                 rowid: rowid,
               ),
