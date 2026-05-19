@@ -8,6 +8,7 @@ import '../../features/metadata/metadata_screen.dart';
 import '../../features/note_detail/note_detail_screen.dart';
 import '../../features/recording/recording_screen.dart';
 import '../../features/settings/settings_screen.dart';
+import '../../features/todo/todo_screen.dart';
 import '../../features/shell/app_shell.dart';
 import '../../core/services/audio_service.dart';
 
@@ -18,6 +19,7 @@ final appRouter = GoRouter(
       builder: (context, state, navigationShell) =>
           AppShell(navigationShell: navigationShell),
       branches: [
+        // Branch 0 — Notes (non-todo only)
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -42,6 +44,17 @@ final appRouter = GoRouter(
             ),
           ],
         ),
+        // Branch 1 — Todo
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/todo',
+              name: 'todo',
+              builder: (context, state) => const TodoScreen(),
+            ),
+          ],
+        ),
+        // Branch 2 — Call Vault
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -66,6 +79,7 @@ final appRouter = GoRouter(
             ),
           ],
         ),
+        // Branch 3 — Settings
         StatefulShellBranch(
           routes: [
             GoRoute(

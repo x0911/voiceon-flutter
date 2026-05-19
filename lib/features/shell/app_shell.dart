@@ -2,36 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/providers/call_vault_enabled_provider.dart';
-
 class AppShell extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
 
   const AppShell({super.key, required this.navigationShell});
 
-  void _onTabTapped(int index, bool callsEnabled) {
-    final branchIndex = callsEnabled ? index : (index == 0 ? 0 : 2);
+  void _onTabTapped(int index) {
     navigationShell.goBranch(
-      branchIndex,
-      initialLocation: branchIndex == navigationShell.currentIndex,
+      index,
+      initialLocation: index == navigationShell.currentIndex,
     );
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final callsEnabledAsync = ref.watch(callVaultEnabledProvider);
-    final callsEnabled = callsEnabledAsync.valueOrNull ?? false;
     final currentBranchIndex = navigationShell.currentIndex;
-    final selectedIndex = callsEnabled
-        ? currentBranchIndex
-        : (currentBranchIndex == 2 ? 1 : 0);
+    final selectedIndex = currentBranchIndex;
 
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: _VoiceonBottomNav(
         currentIndex: selectedIndex,
-        callsEnabled: callsEnabled,
-        onTabTapped: (index) => _onTabTapped(index, callsEnabled),
+        onTabTapped: (index) => _onTabTapped(index),
         onNewNote: () => context.push('/record'),
       ),
     );
@@ -40,13 +32,11 @@ class AppShell extends ConsumerWidget {
 
 class _VoiceonBottomNav extends StatelessWidget {
   final int currentIndex;
-  final bool callsEnabled;
   final ValueChanged<int> onTabTapped;
   final VoidCallback onNewNote;
 
   const _VoiceonBottomNav({
     required this.currentIndex,
-    required this.callsEnabled,
     required this.onTabTapped,
     required this.onNewNote,
   });
@@ -62,12 +52,16 @@ class _VoiceonBottomNav extends StatelessWidget {
         activeIcon: Icons.mic_rounded,
         label: 'Notes',
       ),
-      if (callsEnabled)
-        _NavTab(
-          icon: Icons.call_outlined,
-          activeIcon: Icons.call_rounded,
-          label: 'Calls',
-        ),
+      _NavTab(
+        icon: Icons.list_alt_outlined,
+        activeIcon: Icons.list_alt_rounded,
+        label: 'Todo',
+      ),
+      _NavTab(
+        icon: Icons.call_outlined,
+        activeIcon: Icons.call_rounded,
+        label: 'Calls',
+      ),
       _NavTab(
         icon: Icons.settings_outlined,
         activeIcon: Icons.settings_rounded,
@@ -77,7 +71,6 @@ class _VoiceonBottomNav extends StatelessWidget {
 
     const navBarHeight = 68.0;
     const centerBtnSize = 52.0;
-    final leftCount = callsEnabled ? 2 : 1;
 
     return SafeArea(
       child: Container(
@@ -98,7 +91,7 @@ class _VoiceonBottomNav extends StatelessWidget {
             Row(
               children: [
                 for (int i = 0; i < tabs.length; i++) ...[
-                  if (i == leftCount) SizedBox(width: centerBtnSize + 16),
+                  if (i == 2) SizedBox(width: centerBtnSize + 16),
                   Expanded(
                     child: _NavTabItem(
                       tab: tabs[i],
@@ -129,7 +122,7 @@ class _VoiceonBottomNav extends StatelessWidget {
                     ],
                   ),
                   child: Icon(
-                    Icons.mic_rounded,
+                    Icons.add,
                     color: colorScheme.onPrimary,
                     size: 26,
                   ),

@@ -74,9 +74,7 @@ class NoteCard extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                note.label.isNotEmpty
-                                    ? note.label
-                                    : 'Untitled note',
+                                note.label.isNotEmpty ? note.label : '--',
                                 style: Theme.of(context).textTheme.titleLarge,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -95,7 +93,8 @@ class NoteCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                        const SizedBox(height: 16),
+                        if (note.isTodo || note.dueDate != null)
+                          const SizedBox(height: 16),
                         Row(
                           children: [
                             if (note.isTodo) ...[
@@ -112,15 +111,6 @@ class NoteCard extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   note.isCompleted ? 'Completed' : 'Todo',
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                              ),
-                            ] else ...[
-                              const Icon(Icons.article_outlined, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Note',
                                   style: Theme.of(context).textTheme.bodyMedium,
                                 ),
                               ),
@@ -271,10 +261,14 @@ class _TaggedPeopleRow extends StatelessWidget {
       runSpacing: 8,
       children: [
         ...visiblePeople.map(
-          (person) => CircleAvatar(
-            radius: 16,
-            child: Text(
-              person.name.isNotEmpty ? person.name[0].toUpperCase() : '?',
+          (person) => Chip(
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+            label: Text(
+              person.name.isNotEmpty ? person.name : '?',
+              style: const TextStyle(fontSize: 12),
             ),
           ),
         ),

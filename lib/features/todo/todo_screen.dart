@@ -3,17 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/models/note.dart';
-import 'home_state.dart';
-import 'note_card.dart';
+import '../../core/repositories/note_repository.dart';
+import '../home/note_card.dart';
+import 'todo_state.dart';
 
-class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+class TodoScreen extends ConsumerStatefulWidget {
+  const TodoScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<TodoScreen> createState() => _TodoScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _TodoScreenState extends ConsumerState<TodoScreen> {
   /// Opens the filter bottom sheet dialog.
   void _openFilters(BuildContext context) {
     showModalBottomSheet(
@@ -24,25 +25,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (sheetContext) {
-        return _FilterSheet();
+        return _TodoFilterSheet();
       },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final notesAsync = ref.watch(homeNotesProvider);
-    final filters = ref.watch(homeFilterProvider);
-    final filterNotifier = ref.read(homeFilterProvider.notifier);
+    final todosAsync = ref.watch(todoNotesProvider);
+    final filters = ref.watch(todoFilterProvider);
+    final filterNotifier = ref.read(todoFilterProvider.notifier);
+    final noteRepository = ref.watch(noteRepositoryProvider);
 
-    ref.listen<AsyncValue<List<NoteModel>>>(homeNotesProvider, (
+    ref.listen<AsyncValue<List<NoteModel>>>(todoNotesProvider, (
       previous,
       next,
     ) {
       if (next.hasError && previous?.hasError == false) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Could not load notes.')));
+        ).showSnackBar(const SnackBar(content: Text('Could not load todos.')));
       }
     });
 
@@ -53,7 +55,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             pinned: true,
             floating: false,
             snap: false,
-            title: const Text('Notes'),
+            title: const Text('Todo'),
             actions: [
               Stack(
                 alignment: Alignment.center,
@@ -90,7 +92,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 children: [
                   TextField(
                     decoration: const InputDecoration(
-                      hintText: 'Search notes...',
+                      hintText: 'Search todos...',
                       prefixIcon: Icon(Icons.search),
                       border: OutlineInputBorder(),
                     ),
@@ -113,10 +115,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // Notes list (non-todo only)
-          notesAsync.when(
-            data: (notes) {
-              if (notes.isEmpty) {
+          // Todos list
+          todosAsync.when(
+            data: (todos) {
+              if (todos.isEmpty) {
                 return SliverFillRemaining(
                   hasScrollBody: false,
                   child: Padding(
@@ -125,15 +127,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(
-                          Icons.note_alt_outlined,
+                          Icons.checklist_outlined,
                           size: 72,
                           color: Colors.grey,
                         ),
                         const SizedBox(height: 24),
                         Text(
                           filters.hasFilters
-                              ? 'No notes match your filters'
-                              : 'No notes yet',
+                              ? 'No todos match your filters'
+                              : 'No pending todos',
                           style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -142,8 +144,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         const SizedBox(height: 12),
                         Text(
                           filters.hasFilters
-                              ? 'Try clearing filters or add a new note.'
-                              : 'Tap + to capture your first voice note.',
+                              ? 'Try clearing filters or adjusting your search.'
+                              : filters.showCompleted
+                              ? 'All done! No todos here.'
+                              : 'You have no pending todos. Tap + to create one.',
                           textAlign: TextAlign.center,
                         ),
                         if (filters.hasFilters) ...[
@@ -161,12 +165,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
               return SliverList(
                 delegate: SliverChildBuilderDelegate((context, index) {
-                  final note = notes[index];
+                  final todo = todos[index];
                   return NoteCard(
-                    note: note,
-                    onTap: () => context.push('/note/${note.id}'),
+                    note: todo,
+                    onToggleCompleted: (value) =>
+                        noteRepository.toggleNoteCompletion(todo.id, value),
+                    onTap: () => context.push('/note/${todo.id}'),
                   );
-                }, childCount: notes.length),
+                }, childCount: todos.length),
               );
             },
             loading: () => const SliverFillRemaining(
@@ -175,7 +181,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             error: (error, stack) => SliverFillRemaining(
               hasScrollBody: false,
-              child: Center(child: Text('Unable to load notes: $error')),
+              child: Center(child: Text('Unable to load todos: $error')),
             ),
           ),
 
@@ -187,15 +193,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 }
 
 // ---------------------------------------------------------------------------
-// Filter bottom sheet — Priority & People only (no Type/Status filters)
+// Filter bottom sheet for todos
 // ---------------------------------------------------------------------------
 
-class _FilterSheet extends ConsumerWidget {
+class _TodoFilterSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final filters = ref.watch(homeFilterProvider);
-    final filterNotifier = ref.read(homeFilterProvider.notifier);
-    final peopleAsync = ref.watch(homePeopleProvider);
+    final filters = ref.watch(todoFilterProvider);
+    final filterNotifier = ref.read(todoFilterProvider.notifier);
+    final peopleAsync = ref.watch(todoPeopleProvider);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
@@ -253,6 +259,18 @@ class _FilterSheet extends ConsumerWidget {
                 controller: scrollController,
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                 children: [
+                  // ── Show Completed toggle ──────────────────────────
+                  _SheetSection(
+                    title: 'Completed Items',
+                    child: SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Show completed todos'),
+                      value: filters.showCompleted,
+                      onChanged: (_) => filterNotifier.toggleShowCompleted(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
                   // ── Priority ────────────────────────────────────────
                   _SheetSection(
                     title: 'Priority',

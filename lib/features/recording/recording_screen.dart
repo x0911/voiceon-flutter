@@ -390,7 +390,6 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   Widget _buildTranscriptCard(RecordingState state) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: const Color.fromRGBO(0, 0, 0, 0.04),
           borderRadius: BorderRadius.circular(20),

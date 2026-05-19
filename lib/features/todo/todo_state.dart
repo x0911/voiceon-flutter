@@ -6,24 +6,28 @@ import '../../core/models/person.dart';
 import '../../core/repositories/note_repository.dart';
 import '../../core/repositories/people_repository.dart';
 
-class HomeFilterState {
+class TodoFilterState {
   final Set<NotePriority> priorities;
+  final bool showCompleted;
   final Set<String> selectedPersonIds;
   final String searchText;
 
-  const HomeFilterState({
+  const TodoFilterState({
     this.priorities = const {},
+    this.showCompleted = false,
     this.selectedPersonIds = const {},
     this.searchText = '',
   });
 
-  HomeFilterState copyWith({
+  TodoFilterState copyWith({
     Set<NotePriority>? priorities,
+    bool? showCompleted,
     Set<String>? selectedPersonIds,
     String? searchText,
   }) {
-    return HomeFilterState(
+    return TodoFilterState(
       priorities: priorities ?? this.priorities,
+      showCompleted: showCompleted ?? this.showCompleted,
       selectedPersonIds: selectedPersonIds ?? this.selectedPersonIds,
       searchText: searchText ?? this.searchText,
     );
@@ -31,13 +35,14 @@ class HomeFilterState {
 
   bool get hasFilters {
     return priorities.isNotEmpty ||
+        showCompleted ||
         selectedPersonIds.isNotEmpty ||
         searchText.trim().isNotEmpty;
   }
 }
 
-class HomeFilterNotifier extends StateNotifier<HomeFilterState> {
-  HomeFilterNotifier() : super(const HomeFilterState());
+class TodoFilterNotifier extends StateNotifier<TodoFilterState> {
+  TodoFilterNotifier() : super(const TodoFilterState());
 
   void togglePriority(NotePriority priority) {
     final priorities = Set<NotePriority>.from(state.priorities);
@@ -47,6 +52,10 @@ class HomeFilterNotifier extends StateNotifier<HomeFilterState> {
       priorities.add(priority);
     }
     state = state.copyWith(priorities: priorities);
+  }
+
+  void toggleShowCompleted() {
+    state = state.copyWith(showCompleted: !state.showCompleted);
   }
 
   void togglePersonFilter(String personId) {
@@ -64,31 +73,34 @@ class HomeFilterNotifier extends StateNotifier<HomeFilterState> {
   }
 
   void clearFilters() {
-    state = const HomeFilterState();
+    state = const TodoFilterState();
   }
 }
 
-final homeFilterProvider =
-    StateNotifierProvider<HomeFilterNotifier, HomeFilterState>(
-      (ref) => HomeFilterNotifier(),
+final todoFilterProvider =
+    StateNotifierProvider<TodoFilterNotifier, TodoFilterState>(
+      (ref) => TodoFilterNotifier(),
     );
 
-final homePeopleProvider = StreamProvider.autoDispose<List<PersonModel>>(
+final todoPeopleProvider = StreamProvider.autoDispose<List<PersonModel>>(
   (ref) => ref.watch(peopleRepositoryProvider).watchAllPeople(),
 );
 
-final homeNotesProvider = StreamProvider.autoDispose<List<NoteModel>>((ref) {
-  final filters = ref.watch(homeFilterProvider);
+final todoNotesProvider = StreamProvider.autoDispose<List<NoteModel>>((ref) {
+  final filters = ref.watch(todoFilterProvider);
   final repository = ref.watch(noteRepositoryProvider);
 
   final priorityStrings = filters.priorities
       .map((priority) => priority.value)
       .toList();
 
-  // Home only shows non-todo notes
+  // Always filter to todos only; hide completed unless toggled on
+  final isCompleted = filters.showCompleted ? null : false;
+
   final params = FilterParams(
     priorities: priorityStrings,
-    isTodo: false,
+    isTodo: true,
+    isCompleted: isCompleted,
     taggedPeopleIds: filters.selectedPersonIds.toList(),
     searchText: filters.searchText.trim(),
   );
