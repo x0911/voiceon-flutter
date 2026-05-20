@@ -7,13 +7,9 @@
     <cloud-backup>
         <include domain="database" path="voiceon.sqlite" />
         <include domain="sharedpref" path="." />
-        <exclude domain="file" path="call_vault/" />
-        <exclude domain="file" path="recordings/" />
     </cloud-backup>
     <device-transfer>
         <include domain="database" path="voiceon.sqlite" />
         <include domain="sharedpref" path="." />
-        <exclude domain="file" path="call_vault/" />
-        <exclude domain="file" path="recordings/" />
     </device-transfer>
 </data-extraction-rules>

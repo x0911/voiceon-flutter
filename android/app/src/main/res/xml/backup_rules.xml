@@ -5,13 +5,9 @@
   Excludes: audio recordings (too large, re-imported on next sync)
 -->
 <full-backup-content>
-    <!-- Back up the SQLite database -->
-    <include domain="database" path="voiceon.sqlite" />
+  <!-- Back up the SQLite database -->
+  <include domain="database" path="voiceon.sqlite" />
 
-    <!-- Back up all shared preferences -->
-    <include domain="sharedpref" path="." />
-
-    <!-- Exclude audio recordings — these are re-synced from the Phone app -->
-    <exclude domain="file" path="call_vault/" />
-    <exclude domain="file" path="recordings/" />
+  <!-- Back up all shared preferences -->
+  <include domain="sharedpref" path="." />
 </full-backup-content>
