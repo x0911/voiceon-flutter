@@ -22,6 +22,7 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val REQUEST_FOLDER_PICK = 7001
+        private const val REQUEST_CALL_LOG_PERMISSION = 7002
     }
 
     // Kept as a field so CallRecordingService can send events back to Dart
@@ -29,6 +30,7 @@ class MainActivity : FlutterActivity() {
         private set
 
     private var pendingFolderResult: MethodChannel.Result? = null
+    private var pendingPermissionResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -54,6 +56,26 @@ class MainActivity : FlutterActivity() {
         VoiceonMethodChannel.setMethodCallHandler { call, result ->
             val prefs = getSharedPreferences("voiceon_prefs", Context.MODE_PRIVATE)
             when (call.method) {
+                "checkCallLogPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        val isGranted = checkSelfPermission(android.Manifest.permission.READ_CALL_LOG) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        result.success(isGranted)
+                    } else {
+                        result.success(true)
+                    }
+                }
+                "requestCallLogPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        if (checkSelfPermission(android.Manifest.permission.READ_CALL_LOG) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                            result.success(true)
+                        } else {
+                            pendingPermissionResult = result
+                            requestPermissions(arrayOf(android.Manifest.permission.READ_CALL_LOG), REQUEST_CALL_LOG_PERMISSION)
+                        }
+                    } else {
+                        result.success(true)
+                    }
+                }
                 "isCallVaultEnabled" -> {
                     val enabled = prefs.getBoolean("call_vault_enabled", false)
                     result.success(enabled)
@@ -134,6 +156,23 @@ class MainActivity : FlutterActivity() {
                         result.success(files)
                     } catch (e: Exception) {
                         result.error("LIST_ERROR", e.message, null)
+                    }
+                }
+                "getMatchedCallRecordings" -> {
+                    val args = call.arguments as Map<*, *>
+                    val folderUriStr = args["folderUri"] as? String
+                    val enabledSinceMs = (args["enabledSinceMs"] as? Number)?.toLong() ?: 0L
+
+                    if (folderUriStr == null) {
+                        result.success(emptyList<Any>())
+                        return@setMethodCallHandler
+                    }
+
+                    try {
+                        val matches = matchCallLogsToRecordings(folderUriStr, enabledSinceMs)
+                        result.success(matches)
+                    } catch (e: Exception) {
+                        result.error("MATCH_ERROR", e.message, null)
                     }
                 }
                 "copyCallVaultFile" -> {
@@ -291,6 +330,15 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_CALL_LOG_PERMISSION) {
+            val granted = grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
+            pendingPermissionResult?.success(granted)
+            pendingPermissionResult = null
+        }
+    }
+
     private fun muteBeep() {
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -302,6 +350,188 @@ class MainActivity : FlutterActivity() {
                 audioManager.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_UNMUTE, 0)
                 audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
             }, 500)
+        }
+    }
+
+    private fun matchCallLogsToRecordings(
+        folderUriStr: String,
+        enabledSinceMs: Long
+    ): List<Map<String, Any?>> {
+
+        val AUDIO_EXTENSIONS = setOf("mp3", "m4a", "amr", "aac", "ogg", "wav", "3gp")
+        val TIMESTAMP_TOLERANCE_MS = 30_000L // 30 seconds
+
+        // 1. List all recording files in the folder
+        val folderUri = Uri.parse(folderUriStr)
+        val folder = DocumentFile.fromTreeUri(this, folderUri)
+            ?: return emptyList()
+
+        val nowMs = System.currentTimeMillis()
+
+        data class RecordingFile(
+            val uri: String,
+            val name: String,
+            val lastModifiedMs: Long,
+            val sizeBytes: Long,
+            val realPath: String?,
+        )
+
+        val recordingFiles = folder.listFiles()
+            .filter { file ->
+                val ext = file.name?.substringAfterLast('.')?.lowercase() ?: ""
+                file.isFile &&
+                ext in AUDIO_EXTENSIONS &&
+                file.lastModified() >= enabledSinceMs &&
+                file.lastModified() < nowMs - 5_000L &&
+                file.length() > 0
+            }
+            .map { file ->
+                // Resolve SAF URI to a real file path if possible
+                val realPath = resolveRealPath(file.uri)
+                RecordingFile(
+                    uri = file.uri.toString(),
+                    name = file.name ?: "",
+                    lastModifiedMs = file.lastModified(),
+                    sizeBytes = file.length(),
+                    realPath = realPath,
+                )
+            }
+
+        if (recordingFiles.isEmpty()) return emptyList()
+
+        // 2. Read call log entries since enabledSinceMs
+        data class CallLogEntry(
+            val number: String,
+            val cachedName: String,
+            val dateMs: Long,
+            val durationSeconds: Long,
+            val type: Int, // 1=incoming, 2=outgoing, 3=missed
+        )
+
+        val callLogEntries = mutableListOf<CallLogEntry>()
+        try {
+            val cursor = contentResolver.query(
+                android.provider.CallLog.Calls.CONTENT_URI,
+                arrayOf(
+                    android.provider.CallLog.Calls.NUMBER,
+                    android.provider.CallLog.Calls.CACHED_NAME,
+                    android.provider.CallLog.Calls.DATE,
+                    android.provider.CallLog.Calls.DURATION,
+                    android.provider.CallLog.Calls.TYPE,
+                ),
+                "${android.provider.CallLog.Calls.DATE} >= ?",
+                arrayOf(enabledSinceMs.toString()),
+                "${android.provider.CallLog.Calls.DATE} DESC"
+            )
+
+            cursor?.use { c ->
+                val numberIdx = c.getColumnIndexOrThrow(android.provider.CallLog.Calls.NUMBER)
+                val nameIdx = c.getColumnIndexOrThrow(android.provider.CallLog.Calls.CACHED_NAME)
+                val dateIdx = c.getColumnIndexOrThrow(android.provider.CallLog.Calls.DATE)
+                val durationIdx = c.getColumnIndexOrThrow(android.provider.CallLog.Calls.DURATION)
+                val typeIdx = c.getColumnIndexOrThrow(android.provider.CallLog.Calls.TYPE)
+
+                while (c.moveToNext()) {
+                    callLogEntries.add(
+                        CallLogEntry(
+                            number = c.getString(numberIdx) ?: "",
+                            cachedName = c.getString(nameIdx) ?: "",
+                            dateMs = c.getLong(dateIdx),
+                            durationSeconds = c.getLong(durationIdx),
+                            type = c.getInt(typeIdx),
+                        )
+                    )
+                }
+            }
+        } catch (e: SecurityException) {
+            // READ_CALL_LOG not granted — return empty
+            return emptyList()
+        }
+
+        // 3. Match each call log entry to the closest recording file
+        val usedFileUris = mutableSetOf<String>() // prevent double-matching
+        val results = mutableListOf<Map<String, Any?>>()
+
+        for (logEntry in callLogEntries) {
+            // Skip missed calls (no recording)
+            if (logEntry.type == android.provider.CallLog.Calls.MISSED_TYPE) continue
+
+            val callEndTimeMs = logEntry.dateMs + (logEntry.durationSeconds * 1000)
+
+            // Find best matching recording file
+            // Match window: file.lastModified must be between callStart - 5s and callEnd + 30s
+            val callStartMs = logEntry.dateMs
+            val windowStart = callStartMs - 5_000L
+            val windowEnd = callEndTimeMs + TIMESTAMP_TOLERANCE_MS
+
+            val candidates = recordingFiles
+                .filter { f ->
+                    !usedFileUris.contains(f.uri) &&
+                    f.lastModifiedMs in windowStart..windowEnd
+                }
+                .sortedBy { f -> Math.abs(f.lastModifiedMs - callEndTimeMs) }
+
+            val bestMatch = candidates.firstOrNull() ?: continue
+
+            usedFileUris.add(bestMatch.uri)
+
+            val direction = when (logEntry.type) {
+                android.provider.CallLog.Calls.INCOMING_TYPE -> "incoming"
+                android.provider.CallLog.Calls.OUTGOING_TYPE -> "outgoing"
+                else -> "unknown"
+            }
+
+            // Read audio duration via MediaMetadataRetriever
+            var audioDurationSeconds = logEntry.durationSeconds.toInt()
+            if (bestMatch.realPath != null) {
+                try {
+                    val retriever = android.media.MediaMetadataRetriever()
+                    retriever.setDataSource(bestMatch.realPath)
+                    val durationMs = retriever
+                        .extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                        ?.toLongOrNull() ?: 0L
+                    retriever.release()
+                    if (durationMs > 0) audioDurationSeconds = (durationMs / 1000).toInt()
+                } catch (_: Exception) {}
+            }
+
+            results.add(mapOf(
+                "sourceFileUri" to bestMatch.uri,
+                "audioPath" to (bestMatch.realPath ?: ""), // empty if SAF-only
+                "fileName" to bestMatch.name,
+                "fileSizeBytes" to bestMatch.sizeBytes,
+                "fileExtension" to (bestMatch.name.substringAfterLast('.').lowercase()),
+                "phoneNumber" to logEntry.number,
+                "contactName" to logEntry.cachedName,
+                "direction" to direction,
+                "callDateMs" to logEntry.dateMs,
+                "callEndMs" to callEndTimeMs,
+                "durationSeconds" to audioDurationSeconds,
+            ))
+        }
+
+        return results
+    }
+
+    /**
+     * Resolves a SAF content URI to a real file system path, if possible.
+     * Works for files on primary external storage (most OEM recordings are here).
+     * Returns null if the URI cannot be resolved to a real path.
+     */
+    private fun resolveRealPath(uri: Uri): String? {
+        return try {
+            // SAF URIs for primary storage look like:
+            // content://com.android.externalstorage.documents/document/primary:Recordings/Call/file.mp3
+            // The real path is /storage/emulated/0/Recordings/Call/file.mp3
+            val docId = android.provider.DocumentsContract.getDocumentId(uri)
+            if (docId.startsWith("primary:")) {
+                val relativePath = docId.removePrefix("primary:")
+                "/storage/emulated/0/$relativePath"
+            } else {
+                null // SD card or other storage — cannot resolve simply
+            }
+        } catch (_: Exception) {
+            null
         }
     }
 }

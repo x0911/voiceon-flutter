@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -94,16 +92,7 @@ class CallsRepository {
   // ── Deletes ──────────────────────────────────────────────────────────────
 
   Future<void> deleteCall(String id) async {
-    // Fetch audio path before deleting so we can remove the file from disk
-    final call = await _callsDao.getCallById(id);
     await _callsDao.deleteCall(id); // cascade deletes utterances
-
-    if (call != null && call.audioPath.isNotEmpty) {
-      final file = File(call.audioPath);
-      if (await file.exists()) {
-        await file.delete();
-      }
-    }
   }
 
   // ── Private helpers ──────────────────────────────────────────────────────

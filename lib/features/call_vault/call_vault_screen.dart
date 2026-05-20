@@ -27,7 +27,7 @@ class _CallVaultScreenState extends ConsumerState<CallVaultScreen> {
   void initState() {
     super.initState();
     _checkFolderConfiguration();
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncNotifier = ref.read(callVaultSyncStateProvider);
       _syncNotifier!.addListener(_onSyncStateChanged);
@@ -43,20 +43,25 @@ class _CallVaultScreenState extends ConsumerState<CallVaultScreen> {
   void _onSyncStateChanged() {
     if (_syncNotifier == null) return;
     final state = _syncNotifier!.value;
-    if (!state.isRunning && state.result != null && state.result != _lastShownResult) {
+    if (!state.isRunning &&
+        state.result != null &&
+        state.result != _lastShownResult) {
       _lastShownResult = state.result;
       final result = state.result!;
       String message = '';
       if (result.imported > 0) {
         message = 'Call Vault: ${result.imported} new call(s) imported';
       } else if (result.failed > 0) {
-        message = 'Call Vault: ${result.failed} transcription(s) failed — tap to retry';
+        message =
+            'Call Vault: ${result.failed} transcription(s) failed — tap to retry';
       } else if (result.skipped > 0) {
         message = 'Call Vault: up to date';
       }
-      
+
       if (message.isNotEmpty && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     }
   }
@@ -130,179 +135,184 @@ class _CallVaultScreenState extends ConsumerState<CallVaultScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Sync Now',
-            onPressed: () => ref.read(callVaultSyncServiceProvider).sync(force: true),
+            onPressed: () =>
+                ref.read(callVaultSyncServiceProvider).sync(force: true),
           ),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () => ref.read(callVaultSyncServiceProvider).sync(force: true),
+        onRefresh: () =>
+            ref.read(callVaultSyncServiceProvider).sync(force: true),
         child: CustomScrollView(
-        slivers: [
-          // Sync progress bar
-          SliverToBoxAdapter(
-            child: ValueListenableBuilder<SyncState>(
-              valueListenable: syncNotifier,
-              builder: (context, state, _) {
-                if (!state.isRunning) return const SizedBox.shrink();
-                return Column(
-                  children: [
-                    LinearProgressIndicator(
-                      value: state.total > 0 ? state.current / state.total : null,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: Text(
-                        state.total > 0
-                            ? 'Syncing ${state.current} of ${state.total}...'
-                            : 'Checking for new recordings...',
-                        style: Theme.of(context).textTheme.bodySmall,
+          slivers: [
+            // Sync progress bar
+            SliverToBoxAdapter(
+              child: ValueListenableBuilder<SyncState>(
+                valueListenable: syncNotifier,
+                builder: (context, state, _) {
+                  if (!state.isRunning) return const SizedBox.shrink();
+                  return Column(
+                    children: [
+                      LinearProgressIndicator(
+                        value: state.total > 0
+                            ? state.current / state.total
+                            : null,
                       ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-
-          // Search field
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextField(
-                    decoration: const InputDecoration(
-                      hintText: 'Search calls...',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: filterNotifier.updateSearchText,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4, left: 12),
-                    child: Text(
-                      'Searches transcript, contact name and phone number',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withAlpha((0.5 * 255).round()),
-                          ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
+                        child: Text(
+                          state.total > 0
+                              ? 'Syncing ${state.current} of ${state.total}...'
+                              : 'Checking for new recordings...',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
-          ),
 
-          // Calls list
-          if (_isLoadingFolder)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (!_folderConfigured)
-            SliverFillRemaining(
-              hasScrollBody: false,
+            // Search field
+            SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.all(32),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(
-                      Icons.folder_off_outlined,
-                      size: 72,
-                      color: Colors.amber,
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Setup Required',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                    TextField(
+                      decoration: const InputDecoration(
+                        hintText: 'Search calls...',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
                       ),
-                      textAlign: TextAlign.center,
+                      onChanged: filterNotifier.updateSearchText,
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'You need to configure the call recordings folder in Settings before Voiceon can import calls.',
-                      textAlign: TextAlign.center,
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4, left: 12),
+                      child: Text(
+                        'Searches transcript, contact name and phone number',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface
+                              .withAlpha((0.5 * 255).round()),
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 24),
-                    FilledButton.icon(
-                      onPressed: () => context.push('/settings'),
-                      icon: const Icon(Icons.settings),
-                      label: const Text('Go to Settings'),
-                    ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
-            )
-          else
-            callsAsync.when(
-              data: (calls) {
-              if (calls.isEmpty) {
-                return SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.phone_in_talk_outlined,
-                          size: 72,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          filters.hasFilters
-                              ? 'No calls match your filters'
-                              : 'No calls in your vault yet.\nMake sure call recording is enabled in your Phone app.',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        if (filters.hasFilters) ...[
-                          const SizedBox(height: 16),
-                          FilledButton(
-                            onPressed: filterNotifier.clearFilters,
-                            child: const Text('Clear filters'),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                );
-              }
+            ),
 
-              return SliverList(
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final call = calls[index];
-                  return CallCard(
-                    callRecord: call,
-                    onTap: () => context.push('/call-vault/${call.id}'),
+            // Calls list
+            if (_isLoadingFolder)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (!_folderConfigured)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.folder_off_outlined,
+                        size: 72,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Setup Required',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'You need to configure the call recordings folder in Settings before Voiceon can import calls.',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      FilledButton.icon(
+                        onPressed: () => context.push('/settings'),
+                        icon: const Icon(Icons.settings),
+                        label: const Text('Go to Settings'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              callsAsync.when(
+                data: (calls) {
+                  if (calls.isEmpty) {
+                    return SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.phone_in_talk_outlined,
+                              size: 72,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(height: 24),
+                            Text(
+                              filters.hasFilters
+                                  ? 'No calls match your filters'
+                                  : 'No calls in your vault yet.\nMake sure call recording is enabled in your Phone app.',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            if (filters.hasFilters) ...[
+                              const SizedBox(height: 16),
+                              FilledButton(
+                                onPressed: filterNotifier.clearFilters,
+                                child: const Text('Clear filters'),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final call = calls[index];
+                      return CallCard(
+                        callRecord: call,
+                        onTap: () => context.push('/call-vault/${call.id}'),
+                      );
+                    }, childCount: calls.length),
                   );
-                }, childCount: calls.length),
-              );
-            },
-            loading: () => const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (error, stack) => SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: Text('Unable to load calls: $error')),
-            ),
-          ),
-          
-          const SliverToBoxAdapter(child: SizedBox(height: 32)),
-        ],
-      ),
+                },
+                loading: () => const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (error, stack) => SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(child: Text('Unable to load calls: $error')),
+                ),
+              ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 32)),
+          ],
+        ),
       ),
     );
   }
@@ -387,8 +397,8 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
                   Text(
                     'Filters',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const Spacer(),
                   if (filters.hasFilters)
@@ -524,7 +534,9 @@ class _DateTile extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    date != null ? DateFormat('MMM d, yyyy').format(date!) : 'Tap to set',
+                    date != null
+                        ? DateFormat('MMM d, yyyy').format(date!)
+                        : 'Tap to set',
                     style: TextStyle(
                       color: date != null
                           ? Theme.of(context).colorScheme.onSurface
@@ -564,9 +576,9 @@ class _SheetSection extends StatelessWidget {
         Text(
           title,
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.primary,
-              ),
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.primary,
+          ),
         ),
         const SizedBox(height: 10),
         child,

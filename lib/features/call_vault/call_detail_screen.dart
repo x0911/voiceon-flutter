@@ -154,12 +154,6 @@ class _CallDetailScreenState extends ConsumerState<CallDetailScreen> {
     context.pop();
   }
 
-  Future<void> _retryTranscription(CallRecord call) async {
-    await ref
-        .read(callVaultSyncServiceProvider)
-        .retranscribe(call.id, call.audioPath);
-  }
-
   Widget _buildSectionTitle(String text) {
     return Text(
       text,
@@ -646,7 +640,7 @@ class _ChatBubbleTranscript extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: isOwner
                           ? colorScheme.primary
-                          : colorScheme.surfaceVariant,
+                          : colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.only(
                         topLeft: const Radius.circular(18),
                         topRight: const Radius.circular(18),
@@ -736,7 +730,7 @@ class _NoProviderBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -788,7 +782,7 @@ class _PlainTextTranscript extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceVariant,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(

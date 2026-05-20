@@ -7,6 +7,7 @@
 
     <!-- ── Contacts ─────────────────────────────────────────────────────── -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
 
     <!-- ── Android 13+ notifications ───────────────────────────────────── -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -14,7 +15,11 @@
     <application
         android:label="Voiceon"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:hasFragileUserData="true">
 
         <activity
             android:name=".MainActivity"

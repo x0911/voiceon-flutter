@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Voiceon backup rules for Android 12+ (API 31+)
+  Backs up: database, shared preferences
+  Excludes: audio recordings (too large, re-imported on next sync)
+-->
+<full-backup-content>
+    <!-- Back up the SQLite database -->
+    <include domain="database" path="voiceon.sqlite" />
+
+    <!-- Back up all shared preferences -->
+    <include domain="sharedpref" path="." />
+
+    <!-- Exclude audio recordings — these are re-synced from the Phone app -->
+    <exclude domain="file" path="call_vault/" />
+    <exclude domain="file" path="recordings/" />
+</full-backup-content>

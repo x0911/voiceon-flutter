@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models/call_record.dart';
 import '../repositories/calls_repository.dart';
@@ -61,8 +63,8 @@ class CallVaultSyncService {
     syncState.value = SyncState.running(current: 0, total: 0);
 
     try {
-      // 3. List files from native
-      final rawFiles = await _channel.invokeListMethod<Map>('listCallVaultFiles', {
+      // 3. Get matched call log + recording file pairs from native
+      final rawFiles = await _channel.invokeListMethod<Map>('getMatchedCallRecordings', {
         'folderUri': folderUri,
         'enabledSinceMs': enabledSinceMs,
       });
@@ -74,7 +76,8 @@ class CallVaultSyncService {
       // 4. Filter out files already in DB
       final newFiles = <Map>[];
       for (final file in rawFiles) {
-        final uri = file['uri'] as String;
+        final uri = file['sourceFileUri'] as String? ?? '';
+        if (uri.isEmpty) continue;
         final alreadyExists = await _repo.existsBySourceUri(uri);
         if (!alreadyExists) newFiles.add(file);
       }
@@ -86,17 +89,18 @@ class CallVaultSyncService {
       // 5. Process each new file
       for (int i = 0; i < newFiles.length; i++) {
         final file = newFiles[i];
+        final name = file['fileName'] as String? ?? '';
         syncState.value = SyncState.running(
           current: i + 1,
           total: newFiles.length,
-          currentFileName: file['name'] as String? ?? '',
+          currentFileName: name,
         );
 
         try {
           await _importAndTranscribe(file, enabledSinceMs);
           imported++;
         } catch (e, st) {
-          debugPrint('Sync error on file ${file['name']}: $e\n$st');
+          debugPrint('Sync error on file $name: $e\n$st');
           failed++;
         }
       }
@@ -120,54 +124,56 @@ class CallVaultSyncService {
   }
 
   Future<void> _importAndTranscribe(Map fileInfo, int enabledSinceMs) async {
-    final sourceUri = fileInfo['uri'] as String;
-    final fileName = fileInfo['name'] as String? ?? '';
-    final lastModifiedMs = fileInfo['lastModifiedMs'] as int? ?? 0;
-    final fileSizeBytes = fileInfo['sizeBytes'] as int? ?? 0;
+    final sourceUri = fileInfo['sourceFileUri'] as String? ?? '';
+    final audioPath = fileInfo['audioPath'] as String? ?? '';
+    final fileName = fileInfo['fileName'] as String? ?? '';
+    final fileSizeBytes = fileInfo['fileSizeBytes'] as int? ?? 0;
+    final fileExtension = fileInfo['fileExtension'] as String? ?? 'm4a';
+    final phoneNumber = fileInfo['phoneNumber'] as String? ?? '';
+    final contactName = fileInfo['contactName'] as String? ?? '';
+    final direction = fileInfo['direction'] as String? ?? 'unknown';
+    final callDateMs = fileInfo['callDateMs'] as int? ?? 0;
+    final callEndMs = fileInfo['callEndMs'] as int? ?? 0;
+    final durationSeconds = fileInfo['durationSeconds'] as int? ?? 0;
 
-    // Parse phone number and direction from filename
-    final phoneNumber = _extractPhoneNumber(fileName);
-    final direction = _extractDirection(fileName);
-
-    // Resolve contact name
-    String contactName = '';
-    if (phoneNumber.isNotEmpty) {
-      try {
-        contactName = await _channel.invokeMethod<String>('getContactName', phoneNumber) ?? '';
-      } catch (_) {}
+    // Skip if we can't resolve a real file path for playback
+    if (audioPath.isEmpty) {
+      debugPrint('Skipping $fileName — could not resolve real path from SAF URI');
+      return;
     }
-    if (contactName.isEmpty && phoneNumber.isEmpty) contactName = 'Unknown caller';
 
-    // Copy file to app storage via native
-    final copyResult = await _channel.invokeMapMethod<String, dynamic>(
-      'copyCallVaultFile',
-      {'sourceUri': sourceUri},
+    // Verify file actually exists at that path
+    final file = File(audioPath);
+    if (!await file.exists()) {
+      debugPrint('Skipping $fileName — file not found at resolved path: $audioPath');
+      return;
+    }
+
+    final uuid = const Uuid().v4();
+    final startedAt = DateTime.fromMillisecondsSinceEpoch(callDateMs);
+    final endedAt = DateTime.fromMillisecondsSinceEpoch(
+      callEndMs > 0 ? callEndMs : callDateMs + (durationSeconds * 1000),
     );
-    if (copyResult == null) throw Exception('File copy failed');
 
-    final destPath = copyResult['destPath'] as String;
-    final ext = copyResult['extension'] as String? ?? 'm4a';
-    final durationSeconds = copyResult['durationSeconds'] as int? ?? 0;
-    final uuid = copyResult['id'] as String;
-
-    // Approximate started_at from file modification time
-    final startedAt = DateTime.fromMillisecondsSinceEpoch(lastModifiedMs)
-        .subtract(Duration(seconds: durationSeconds));
-    final endedAt = DateTime.fromMillisecondsSinceEpoch(lastModifiedMs);
+    // Display name fallback
+    final resolvedContactName = contactName.isNotEmpty
+        ? contactName
+        : (phoneNumber.isEmpty ? 'Unknown caller' : '');
 
     // Save to DB with status "processing"
+    // audioPath is the REAL path — no copying
     final call = CallRecord(
       id: uuid,
       phoneNumber: phoneNumber,
-      contactName: contactName,
+      contactName: resolvedContactName,
       direction: direction,
       startedAt: startedAt,
       endedAt: endedAt,
       durationSeconds: durationSeconds,
-      audioPath: destPath,
+      audioPath: audioPath,       // real path, no copy
       fileSizeBytes: fileSizeBytes,
-      fileExtension: ext,
-      sourceFileUri: sourceUri,
+      fileExtension: fileExtension,
+      sourceFileUri: sourceUri,   // SAF URI for dedup
       transcriptionStatus: 'processing',
       rawTranscript: '',
       utterances: [],
@@ -177,7 +183,7 @@ class CallVaultSyncService {
     // Transcribe
     try {
       final transcriptionService = await _ref.read(callTranscriptionServiceProvider.future);
-      final result = await transcriptionService.transcribeCall(destPath)
+      final result = await transcriptionService.transcribeCall(audioPath)
           .timeout(const Duration(seconds: 90));
       final utterances = result.utterances.map((u) => u.copyWith(callId: uuid)).toList();
       await _repo.updateTranscription(
@@ -189,28 +195,6 @@ class CallVaultSyncService {
     } catch (_) {
       await _repo.updateTranscription(uuid, 'failed', '', []);
     }
-  }
-
-  // --- Filename parsing helpers ---
-
-  String _extractPhoneNumber(String filename) {
-    // Match international format (+...) or local digits (7-15 digits)
-    final intl = RegExp(r'\+\d{7,15}');
-    final local = RegExp(r'(?<![.\d])\d{7,15}(?![.\d])');
-    return intl.firstMatch(filename)?.group(0) ??
-           local.firstMatch(filename)?.group(0) ??
-           '';
-  }
-
-  String _extractDirection(String filename) {
-    final lower = filename.toLowerCase();
-    if (lower.contains('incoming') || lower.contains('_in_') || lower.contains('_in.')) {
-      return 'incoming';
-    }
-    if (lower.contains('outgoing') || lower.contains('_out_') || lower.contains('_out.')) {
-      return 'outgoing';
-    }
-    return 'unknown';
   }
 
   Future<void> retranscribe(String callId, String audioPath) async {

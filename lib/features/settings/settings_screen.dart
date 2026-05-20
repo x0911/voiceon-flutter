@@ -1,9 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/database/app_database.dart';
 import '../../core/repositories/settings_repository.dart';
 import '../../core/services/transcription_service.dart';
 import '../../core/theme/theme_provider.dart';
@@ -134,9 +138,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<bool> _requestCallPermissions() async {
-    await [Permission.contacts, Permission.notification].request();
+    // Request other permissions (Contacts, Notifications, Phone) via permission_handler
+    await [
+      Permission.contacts,
+      Permission.notification,
+      Permission.phone,
+    ].request();
 
-    return true;
+    // Check/request READ_CALL_LOG natively since permission_handler doesn't define callLog
+    bool callLogGranted = false;
+    try {
+      callLogGranted = await _callsChannel.invokeMethod<bool>('requestCallLogPermission') ?? false;
+    } catch (_) {}
+
+    if (!callLogGranted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Call log permission is required to match recordings with calls. '
+              'Grant it in App Settings.',
+            ),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+      // Still return true — user can use Call Vault without call log access,
+      // but matching will be limited
+    }
+
+    return true; // always allow enabling; gracefully degrade if permissions missing
   }
 
   // ── AI Transcription helpers ─────────────────────────────────────────────
@@ -321,6 +352,69 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _apiKeyController.dispose();
     _endpointController.dispose();
     super.dispose();
+  }
+
+  Future<void> _confirmClearAllData() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Clear all data?'),
+        content: const Text(
+          'This will permanently delete all your notes, call records, '
+          'transcriptions, and settings from this device.\n\n'
+          'This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete Everything'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      // Clear the database
+      final db = ref.read(appDatabaseProvider);
+      await db.close();
+
+      // Delete the database file
+      final dbFolder = await getApplicationDocumentsDirectory();
+      final dbFile = File('${dbFolder.path}/voiceon.sqlite');
+      if (await dbFile.exists()) await dbFile.delete();
+
+      // Clear SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
+      // Clear audio recordings folder
+      final recFolder = Directory('${dbFolder.path}/recordings');
+      if (await recFolder.exists()) await recFolder.delete(recursive: true);
+
+      // Note: call_vault recordings are NOT deleted (they belong to Phone app)
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('All data cleared. Please restart the app.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error clearing data: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildThemeCard({
@@ -880,6 +974,49 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Text(
                     'Version 1.0.0',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '📦 Your data is backed up to Google Drive automatically.',
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    textAlign: TextAlign.center,
+                  ),
+                  Text(
+                    'When you uninstall, Android will ask if you want to keep your data.',
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            // ── Data & Storage ──────────────────────────────────────────────────
+            const Text('Data & Storage', style: TextStyle(letterSpacing: 1.2)),
+            const SizedBox(height: 12),
+            Card(
+              margin: EdgeInsets.zero,
+              shadowColor: Colors.transparent,
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.backup_outlined),
+                    title: const Text('Auto Backup'),
+                    subtitle: const Text(
+                      'Your notes and call data are automatically backed up to Google Drive '
+                      'and restored if you reinstall Voiceon.',
+                    ),
+                    trailing: Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 20,
+                    ),
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  ListTile(
+                    leading: const Icon(Icons.delete_forever_outlined),
+                    title: const Text('Clear All Data'),
+                    subtitle: const Text('Permanently delete all notes, call records, and settings'),
+                    onTap: _confirmClearAllData,
                   ),
                 ],
               ),

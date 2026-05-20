@@ -7,12 +7,13 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voiceon/main.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
   testWidgets('Voiceon home screen title displays', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const VoiceonApp());
+    await tester.pumpWidget(const ProviderScope(child: VoiceonApp()));
 
     expect(find.text('Voiceon'), findsWidgets);
   });

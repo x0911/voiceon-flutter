@@ -19,12 +19,17 @@ class AppShell extends ConsumerWidget {
     final currentBranchIndex = navigationShell.currentIndex;
     final selectedIndex = currentBranchIndex;
 
+    // Watch current location to disable + button when already recording
+    final currentLocation = GoRouterState.of(context).uri.path;
+    final isOnRecordingFlow = currentLocation.startsWith('/record') ||
+        currentLocation.startsWith('/metadata');
+
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: _VoiceonBottomNav(
         currentIndex: selectedIndex,
         onTabTapped: (index) => _onTabTapped(index),
-        onNewNote: () => context.push('/record'),
+        onNewNote: isOnRecordingFlow ? null : () => context.push('/record'),
       ),
     );
   }
@@ -33,12 +38,12 @@ class AppShell extends ConsumerWidget {
 class _VoiceonBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTabTapped;
-  final VoidCallback onNewNote;
+  final VoidCallback? onNewNote; // nullable — null means disabled
 
   const _VoiceonBottomNav({
     required this.currentIndex,
     required this.onTabTapped,
-    required this.onNewNote,
+    this.onNewNote, // optional
   });
 
   @override
@@ -106,25 +111,31 @@ class _VoiceonBottomNav extends StatelessWidget {
             Positioned(
               top: -10,
               child: GestureDetector(
-                onTap: onNewNote,
-                child: Container(
-                  width: centerBtnSize,
-                  height: centerBtnSize,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: colorScheme.primary.withAlpha(100),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.add,
-                    color: colorScheme.onPrimary,
-                    size: 26,
+                onTap: onNewNote, // null = no-op (GestureDetector handles null gracefully)
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: onNewNote != null ? 1.0 : 0.4,
+                  child: Container(
+                    width: centerBtnSize,
+                    height: centerBtnSize,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary,
+                      shape: BoxShape.circle,
+                      boxShadow: onNewNote != null
+                          ? [
+                              BoxShadow(
+                                color: colorScheme.primary.withAlpha(100),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Icon(
+                      Icons.add,
+                      color: colorScheme.onPrimary,
+                      size: 26,
+                    ),
                   ),
                 ),
               ),

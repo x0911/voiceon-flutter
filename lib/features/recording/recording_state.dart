@@ -163,7 +163,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
         case TranscriptionStatus.success:
           transcript = transcriptionResult.text;
           debugPrint(
-            'RecordingNotifier.stopRecording: transcript="${transcript.substring(0, 50)}..."',
+            'RecordingNotifier.stopRecording: transcript="${transcript.length > 50 ? transcript.substring(0, 50) : transcript}..."',
           );
           break;
         case TranscriptionStatus.noApiKey:
