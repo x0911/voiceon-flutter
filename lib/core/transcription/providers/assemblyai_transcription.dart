@@ -35,7 +35,7 @@ Future<String> assemblyaiTranscribe(String audioPath, String apiKey) async {
       body: jsonEncode({
         'audio_url': uploadUrl,
         'language_detection': true,
-        'speech_models': ['universal-3-pro'],
+        'speech_models': ['universal-3-pro', 'universal-2'],
       }),
     );
 
