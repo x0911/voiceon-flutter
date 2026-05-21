@@ -228,13 +228,13 @@ class _CallDetailScreenState extends ConsumerState<CallDetailScreen> {
                           width: 64,
                           height: 64,
                           decoration: BoxDecoration(
-                            color: (isIncoming ? Colors.teal : Colors.red)
+                            color: (isIncoming ? Colors.teal : Colors.blueGrey)
                                 .withAlpha(25),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
                             isIncoming ? Icons.call_received : Icons.call_made,
-                            color: isIncoming ? Colors.teal : Colors.red,
+                            color: isIncoming ? Colors.teal : Colors.blueGrey,
                             size: 32,
                           ),
                         ),
@@ -318,14 +318,17 @@ class _CallDetailScreenState extends ConsumerState<CallDetailScreen> {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: (isIncoming ? Colors.teal : Colors.red)
-                                    .withAlpha(40),
+                                color:
+                                    (isIncoming ? Colors.teal : Colors.blueGrey)
+                                        .withAlpha(40),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 isIncoming ? 'Incoming' : 'Outgoing',
                                 style: TextStyle(
-                                  color: isIncoming ? Colors.teal : Colors.red,
+                                  color: isIncoming
+                                      ? Colors.teal
+                                      : Colors.blueGrey,
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                 ),

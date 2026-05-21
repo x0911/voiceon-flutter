@@ -50,6 +50,9 @@ class CallVaultSyncService {
       return SyncResult.zero();
     }
 
+    // Fix: remove previously broken imports so they get re-imported correctly
+    await _repo.deleteCallsWithEmptyAudioPath();
+
     // 1. Check if feature is enabled
     final isEnabled = await _channel.invokeMethod<bool>('isCallVaultEnabled') ?? false;
     if (!isEnabled) return SyncResult.zero();

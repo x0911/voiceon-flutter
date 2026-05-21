@@ -515,22 +515,37 @@ class MainActivity : FlutterActivity() {
 
     /**
      * Resolves a SAF content URI to a real file system path, if possible.
-     * Works for files on primary external storage (most OEM recordings are here).
+     * Handles both single-document URIs and tree-document URIs.
      * Returns null if the URI cannot be resolved to a real path.
      */
     private fun resolveRealPath(uri: Uri): String? {
         return try {
-            // SAF URIs for primary storage look like:
-            // content://com.android.externalstorage.documents/document/primary:Recordings/Call/file.mp3
-            // The real path is /storage/emulated/0/Recordings/Call/file.mp3
-            val docId = android.provider.DocumentsContract.getDocumentId(uri)
-            if (docId.startsWith("primary:")) {
-                val relativePath = docId.removePrefix("primary:")
-                "/storage/emulated/0/$relativePath"
-            } else {
-                null // SD card or other storage — cannot resolve simply
+            val docId: String? = try {
+                // getDocumentId works for both tree-child and single document URIs
+                // when the URI comes from DocumentFile.listFiles()
+                android.provider.DocumentsContract.getDocumentId(uri)
+            } catch (_: Exception) {
+                // Fall back to tree document ID
+                try {
+                    android.provider.DocumentsContract.getTreeDocumentId(uri)
+                } catch (_: Exception) {
+                    null
+                }
             }
-        } catch (_: Exception) {
+
+            android.util.Log.d("Voiceon", "resolveRealPath: uri=$uri docId=$docId")
+
+            if (docId != null && docId.startsWith("primary:")) {
+                val relativePath = docId.removePrefix("primary:")
+                val resolvedPath = "/storage/emulated/0/$relativePath"
+                android.util.Log.d("Voiceon", "resolveRealPath: resolved=$resolvedPath")
+                resolvedPath
+            } else {
+                android.util.Log.w("Voiceon", "resolveRealPath: cannot resolve docId=$docId for $uri")
+                null
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("Voiceon", "resolveRealPath failed for $uri: ${e.message}")
             null
         }
     }
