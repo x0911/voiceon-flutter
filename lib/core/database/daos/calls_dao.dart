@@ -148,11 +148,14 @@ ORDER BY started_at DESC
     await (delete(callsTable)..where((t) => t.id.equals(id))).go();
   }
 
-  /// Deletes call records that have an empty audioPath (broken imports).
-  /// These will be re-imported on the next sync with the correct path.
-  Future<void> deleteCallsWithEmptyAudioPath() async {
+  /// Deletes call records that have a broken audioPath (empty or pointing to
+  /// inaccessible real paths like /storage/emulated/0/...).
+  /// These will be re-imported on the next sync with a correct app-private copy.
+  Future<void> deleteCallsWithBrokenAudioPath() async {
     await (delete(callsTable)
-      ..where((t) => t.audioPath.equals(''))).go();
+      ..where((t) =>
+          t.audioPath.equals('') |
+          t.audioPath.like('/storage/%'))).go();
   }
 
   // ── Single fetch ────────────────────────────────────────────────────────

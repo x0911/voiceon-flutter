@@ -51,7 +51,7 @@ class CallVaultSyncService {
     }
 
     // Fix: remove previously broken imports so they get re-imported correctly
-    await _repo.deleteCallsWithEmptyAudioPath();
+    await _repo.deleteCallsWithBrokenAudioPath();
 
     // 1. Check if feature is enabled
     final isEnabled = await _channel.invokeMethod<bool>('isCallVaultEnabled') ?? false;
@@ -128,7 +128,6 @@ class CallVaultSyncService {
 
   Future<void> _importAndTranscribe(Map fileInfo, int enabledSinceMs) async {
     final sourceUri = fileInfo['sourceFileUri'] as String? ?? '';
-    final audioPath = fileInfo['audioPath'] as String? ?? '';
     final fileName = fileInfo['fileName'] as String? ?? '';
     final fileSizeBytes = fileInfo['fileSizeBytes'] as int? ?? 0;
     final fileExtension = fileInfo['fileExtension'] as String? ?? 'm4a';
@@ -139,16 +138,35 @@ class CallVaultSyncService {
     final callEndMs = fileInfo['callEndMs'] as int? ?? 0;
     final durationSeconds = fileInfo['durationSeconds'] as int? ?? 0;
 
-    // Skip if we can't resolve a real file path for playback
-    if (audioPath.isEmpty) {
-      debugPrint('Skipping $fileName — could not resolve real path from SAF URI');
+    if (sourceUri.isEmpty) {
+      debugPrint('Skipping $fileName — no source URI');
       return;
     }
 
-    // Verify file actually exists at that path
+    // Copy file from SAF URI to app-private storage
+    // Direct file path access is blocked on Android 11+ (scoped storage)
+    final copyResult = await _channel.invokeMapMethod<String, dynamic>(
+      'copyCallVaultFile',
+      {'sourceUri': sourceUri},
+    );
+
+    if (copyResult == null) {
+      debugPrint('Skipping $fileName — copy failed (null result)');
+      return;
+    }
+
+    final audioPath = copyResult['destPath'] as String? ?? '';
+    final audioDuration = copyResult['durationSeconds'] as int? ?? durationSeconds;
+
+    if (audioPath.isEmpty) {
+      debugPrint('Skipping $fileName — copy returned empty path');
+      return;
+    }
+
+    // Verify copied file exists
     final file = File(audioPath);
     if (!await file.exists()) {
-      debugPrint('Skipping $fileName — file not found at resolved path: $audioPath');
+      debugPrint('Skipping $fileName — copied file not found at: $audioPath');
       return;
     }
 
@@ -164,7 +182,6 @@ class CallVaultSyncService {
         : (phoneNumber.isEmpty ? 'Unknown caller' : '');
 
     // Save to DB with status "processing"
-    // audioPath is the REAL path — no copying
     final call = CallRecord(
       id: uuid,
       phoneNumber: phoneNumber,
@@ -172,8 +189,8 @@ class CallVaultSyncService {
       direction: direction,
       startedAt: startedAt,
       endedAt: endedAt,
-      durationSeconds: durationSeconds,
-      audioPath: audioPath,       // real path, no copy
+      durationSeconds: audioDuration,
+      audioPath: audioPath,       // app-private copy
       fileSizeBytes: fileSizeBytes,
       fileExtension: fileExtension,
       sourceFileUri: sourceUri,   // SAF URI for dedup

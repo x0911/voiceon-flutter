@@ -95,8 +95,8 @@ class CallsRepository {
     await _callsDao.deleteCall(id); // cascade deletes utterances
   }
 
-  Future<void> deleteCallsWithEmptyAudioPath() =>
-      _callsDao.deleteCallsWithEmptyAudioPath();
+  Future<void> deleteCallsWithBrokenAudioPath() =>
+      _callsDao.deleteCallsWithBrokenAudioPath();
 
   // ── Private helpers ──────────────────────────────────────────────────────
 

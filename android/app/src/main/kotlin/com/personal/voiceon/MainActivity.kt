@@ -373,7 +373,6 @@ class MainActivity : FlutterActivity() {
             val name: String,
             val lastModifiedMs: Long,
             val sizeBytes: Long,
-            val realPath: String?,
         )
 
         val recordingFiles = folder.listFiles()
@@ -386,14 +385,11 @@ class MainActivity : FlutterActivity() {
                 file.length() > 0
             }
             .map { file ->
-                // Resolve SAF URI to a real file path if possible
-                val realPath = resolveRealPath(file.uri)
                 RecordingFile(
                     uri = file.uri.toString(),
                     name = file.name ?: "",
                     lastModifiedMs = file.lastModified(),
                     sizeBytes = file.length(),
-                    realPath = realPath,
                 )
             }
 
@@ -481,23 +477,20 @@ class MainActivity : FlutterActivity() {
                 else -> "unknown"
             }
 
-            // Read audio duration via MediaMetadataRetriever
+            // Read audio duration via SAF content URI (real path access blocked on Android 11+)
             var audioDurationSeconds = logEntry.durationSeconds.toInt()
-            if (bestMatch.realPath != null) {
-                try {
-                    val retriever = android.media.MediaMetadataRetriever()
-                    retriever.setDataSource(bestMatch.realPath)
-                    val durationMs = retriever
-                        .extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
-                        ?.toLongOrNull() ?: 0L
-                    retriever.release()
-                    if (durationMs > 0) audioDurationSeconds = (durationMs / 1000).toInt()
-                } catch (_: Exception) {}
-            }
+            try {
+                val retriever = android.media.MediaMetadataRetriever()
+                retriever.setDataSource(this@MainActivity, Uri.parse(bestMatch.uri))
+                val durationMs = retriever
+                    .extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    ?.toLongOrNull() ?: 0L
+                retriever.release()
+                if (durationMs > 0) audioDurationSeconds = (durationMs / 1000).toInt()
+            } catch (_: Exception) {}
 
             results.add(mapOf(
                 "sourceFileUri" to bestMatch.uri,
-                "audioPath" to (bestMatch.realPath ?: ""), // empty if SAF-only
                 "fileName" to bestMatch.name,
                 "fileSizeBytes" to bestMatch.sizeBytes,
                 "fileExtension" to (bestMatch.name.substringAfterLast('.').lowercase()),
