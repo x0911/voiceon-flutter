@@ -183,27 +183,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Recording'),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () async {
-            await notifier.cancelRecording();
-            if (!context.mounted) return;
-            if (widget.extra is RecordingEditContext) {
-              if (context.canPop()) {
-                context.pop();
-              } else {
-                context.go(
-                  '/note/${(widget.extra as RecordingEditContext).noteId}',
-                );
-              }
-            } else if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/');
-            }
-          },
-        ),
+        title: const Text('New Recording'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 14),

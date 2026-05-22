@@ -21,7 +21,8 @@ class AppShell extends ConsumerWidget {
 
     // Watch current location to disable + button when already recording
     final currentLocation = GoRouterState.of(context).uri.path;
-    final isOnRecordingFlow = currentLocation.startsWith('/record') ||
+    final isOnRecordingFlow =
+        currentLocation.startsWith('/record') ||
         currentLocation.startsWith('/metadata');
 
     return Scaffold(
@@ -29,7 +30,7 @@ class AppShell extends ConsumerWidget {
       bottomNavigationBar: _VoiceonBottomNav(
         currentIndex: selectedIndex,
         onTabTapped: (index) => _onTabTapped(index),
-        onNewNote: isOnRecordingFlow ? null : () => context.push('/record'),
+        onNewNote: isOnRecordingFlow ? null : () => _onTabTapped(4),
       ),
     );
   }
@@ -111,10 +112,11 @@ class _VoiceonBottomNav extends StatelessWidget {
             Positioned(
               top: -10,
               child: GestureDetector(
-                onTap: onNewNote, // null = no-op (GestureDetector handles null gracefully)
+                onTap:
+                    onNewNote, // null = no-op (GestureDetector handles null gracefully)
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 200),
-                  opacity: onNewNote != null ? 1.0 : 0.4,
+                  opacity: 1.0,
                   child: Container(
                     width: centerBtnSize,
                     height: centerBtnSize,

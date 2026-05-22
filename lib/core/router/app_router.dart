@@ -89,31 +89,41 @@ final appRouter = GoRouter(
             ),
           ],
         ),
+        // Branch 4 — Recording & Metadata (non-tab, pushed modally)
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/record',
+              name: 'record',
+              builder: (context, state) => RecordingScreen(extra: state.extra),
+            ),
+          ],
+        ),
+        // Branch 5 — Metadata (non-tab, pushed modally)
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/metadata',
+              name: 'metadata',
+              builder: (context, state) {
+                final extra = state.extra;
+                if (extra is RecordingEditContext) {
+                  return MetadataScreen(
+                    recordingResult: extra.recordingResult,
+                    editingNoteId: extra.noteId,
+                  );
+                }
+                if (extra is RecordingResult) {
+                  return MetadataScreen(recordingResult: extra);
+                }
+                return const Scaffold(
+                  body: Center(child: Text('Recording details are missing.')),
+                );
+              },
+            ),
+          ],
+        ),
       ],
-    ),
-    GoRoute(
-      path: '/record',
-      name: 'record',
-      builder: (context, state) => RecordingScreen(extra: state.extra),
-    ),
-    GoRoute(
-      path: '/metadata',
-      name: 'metadata',
-      builder: (context, state) {
-        final extra = state.extra;
-        if (extra is RecordingEditContext) {
-          return MetadataScreen(
-            recordingResult: extra.recordingResult,
-            editingNoteId: extra.noteId,
-          );
-        }
-        if (extra is RecordingResult) {
-          return MetadataScreen(recordingResult: extra);
-        }
-        return const Scaffold(
-          body: Center(child: Text('Recording details are missing.')),
-        );
-      },
     ),
   ],
 );
